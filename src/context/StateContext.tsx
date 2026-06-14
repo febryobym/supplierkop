@@ -80,6 +80,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Connectivity and Authentications
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isConnectionChecked, setIsConnectionChecked] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isOfflineFallback, setIsOfflineFallback] = useState(false);
 
@@ -95,6 +96,8 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const errMsg = error instanceof Error ? error.message : String(error);
         setAuthError(`firestore-error: ${errMsg}`);
         setIsOfflineFallback(true);
+      } finally {
+        setIsConnectionChecked(true);
       }
     };
 
@@ -114,6 +117,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setAuthError(`auth-error: ${errMsg}`);
             setIsOfflineFallback(true);
             setIsAuthReady(true);
+            setIsConnectionChecked(true);
           });
       }
     });
@@ -186,7 +190,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Database Initializer (Genesis Seeding)
   useEffect(() => {
-    if (!isAuthReady || isOfflineFallback) return;
+    if (!isAuthReady || !isConnectionChecked || isOfflineFallback) return;
 
     const seedDatabaseIfNeeded = async () => {
       try {
@@ -229,11 +233,11 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     seedDatabaseIfNeeded();
-  }, [isAuthReady, isOfflineFallback]);
+  }, [isAuthReady, isConnectionChecked, isOfflineFallback]);
 
   // ONLINE MODE: Real-time Firebase listeners
   useEffect(() => {
-    if (!isAuthReady || isOfflineFallback) return;
+    if (!isAuthReady || !isConnectionChecked || isOfflineFallback) return;
 
     // 1. Sync Persons
     const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
@@ -301,7 +305,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       unsubPayments();
       unsubLogs();
     };
-  }, [isAuthReady, isOfflineFallback]);
+  }, [isAuthReady, isConnectionChecked, isOfflineFallback]);
 
   // Compute Warnings Notification
   useEffect(() => {
