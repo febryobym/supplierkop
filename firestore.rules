@@ -12,127 +12,32 @@ service cloud.firestore {
     }
 
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() <= 128;
     }
 
-    function incoming() {
-      return request.resource.data;
-    }
-
-    function existing() {
-      return resource.data;
-    }
-
-    // ENTITY VALIDATORS
-
-    function isValidUser(data) {
-      return data.keys().hasAll(['id', 'username', 'name', 'role', 'email']) 
-        && (data.keys().size() == 5 || (data.keys().size() == 6 && data.keys().hasAll(['password'])))
-        && data.id is string && data.id.size() <= 128
-        && data.username is string && data.username.size() >= 3 && data.username.size() <= 64
-        && data.name is string && data.name.size() >= 2 && data.name.size() <= 128
-        && data.role is string && (data.role == 'Admin' || data.role == 'Manager' || data.role == 'Staff')
-        && data.email is string && data.email.size() <= 256
-        && (!data.keys().hasAll(['password']) || (data.password is string && data.password.size() <= 128));
-    }
-
-    function isValidSupplier(data) {
-      return data.keys().hasAll(['id', 'name', 'code', 'contactPerson', 'phone', 'email', 'address', 'bankName', 'bankAccount', 'bankAccountHolder'])
-        && data.keys().size() == 10
-        && data.id is string && data.id.size() <= 128
-        && data.name is string && data.name.size() <= 128
-        && data.code is string && data.code.size() <= 32
-        && data.contactPerson is string && data.contactPerson.size() <= 128
-        && data.phone is string && data.phone.size() <= 32
-        && data.email is string && data.email.size() <= 256
-        && data.address is string && data.address.size() <= 512
-        && data.bankName is string && data.bankName.size() <= 128
-        && data.bankAccount is string && data.bankAccount.size() <= 64
-        && data.bankAccountHolder is string && data.bankAccountHolder.size() <= 128;
-    }
-
-    function isValidPurchase(data) {
-      return data.keys().hasAll(['id', 'supplierId', 'invoiceNumber', 'purchaseDate', 'dueDate', 'items', 'subTotal', 'tax', 'taxAmount', 'discount', 'total', 'paidAmount', 'remainingAmount', 'status', 'createdBy', 'createdAt'])
-        && (data.keys().size() == 16 || (data.keys().size() == 17 && data.keys().hasAny(['notes'])))
-        && data.id is string && data.id.size() <= 128
-        && data.supplierId is string && data.supplierId.size() <= 128
-        && data.invoiceNumber is string && data.invoiceNumber.size() <= 128
-        && data.purchaseDate is string && data.purchaseDate.size() <= 32
-        && data.dueDate is string && data.dueDate.size() <= 32
-        && data.items is list && data.items.size() <= 100
-        && data.subTotal is number
-        && data.tax is number
-        && data.taxAmount is number
-        && data.discount is number
-        && data.total is number
-        && data.paidAmount is number
-        && data.remainingAmount is number
-        && data.status is string && (data.status == 'Belum Lunas' || data.status == 'Sebagian' || data.status == 'Lunas')
-        && data.createdBy is string && data.createdBy.size() <= 128
-        && data.createdAt is string && data.createdAt.size() <= 128;
-    }
-
-    function isValidPayment(data) {
-      return data.keys().hasAll(['id', 'purchaseId', 'amount', 'paymentDate', 'paymentMethod', 'receivedBy', 'createdAt'])
-        && (data.keys().size() == 7 || (data.keys().size() == 8 && data.keys().hasAny(['referenceNumber', 'notes'])) || (data.keys().size() == 9 && data.keys().hasAll(['referenceNumber', 'notes'])))
-        && data.id is string && data.id.size() <= 128
-        && data.purchaseId is string && data.purchaseId.size() <= 128
-        && data.amount is number
-        && data.paymentDate is string && data.paymentDate.size() <= 32
-        && data.paymentMethod is string && (data.paymentMethod == 'Cash' || data.paymentMethod == 'Transfer Bank' || data.paymentMethod == 'Cek_Giro' || data.paymentMethod == 'Lainnya')
-        && data.receivedBy is string && data.receivedBy.size() <= 128
-        && data.createdAt is string && data.createdAt.size() <= 128;
-    }
-
-    function isValidActivityLog(data) {
-      return data.keys().hasAll(['id', 'userId', 'userName', 'userRole', 'action', 'target', 'timestamp'])
-        && data.keys().size() == 7
-        && data.id is string && data.id.size() <= 128
-        && data.userId is string && data.userId.size() <= 128
-        && data.userName is string && data.userName.size() <= 128
-        && data.userRole is string && (data.userRole == 'Admin' || data.userRole == 'Manager' || data.userRole == 'Staff')
-        && data.action is string && data.action.size() <= 128
-        && data.target is string && data.target.size() <= 256
-        && data.timestamp is string && data.timestamp.size() <= 128;
-    }
-
-    // MATCH BLOCKS FOR SYSTEM COLLECTIONS
-
+    // MATCH BLOCKS FOR COLLECTIONS
     match /users/{userId} {
-      allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn() && isValidId(userId) && isValidUser(incoming());
-      allow delete: if isSignedIn() && isValidId(userId);
+      allow read, write: if isSignedIn() && isValidId(userId);
     }
 
     match /suppliers/{supplierId} {
-      allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn() && isValidId(supplierId) && isValidSupplier(incoming());
-      allow delete: if isSignedIn() && isValidId(supplierId);
+      allow read, write: if isSignedIn() && isValidId(supplierId);
     }
 
     match /purchases/{purchaseId} {
-      allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn() && isValidId(purchaseId) && isValidPurchase(incoming());
-      allow delete: if isSignedIn() && isValidId(purchaseId);
+      allow read, write: if isSignedIn() && isValidId(purchaseId);
     }
 
     match /payments/{paymentId} {
-      allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn() && isValidId(paymentId) && isValidPayment(incoming());
-      allow delete: if isSignedIn() && isValidId(paymentId);
+      allow read, write: if isSignedIn() && isValidId(paymentId);
     }
 
     match /logs/{logId} {
-      allow get, list: if isSignedIn();
-      // Only creation allowed for accountability
-      allow create: if isSignedIn() && isValidId(logId) && isValidActivityLog(incoming());
-      allow update, delete: if false;
+      allow read, write: if isSignedIn() && isValidId(logId);
     }
 
     match /system_config/{configId} {
-      allow get: if isSignedIn() && isValidId(configId);
-      allow create, update: if isSignedIn() && isValidId(configId);
-      allow delete, list: if false;
+      allow read, write: if isSignedIn() && isValidId(configId);
     }
   }
 }
