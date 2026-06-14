@@ -9,20 +9,24 @@ import { formatDate } from '../data';
 import { Terminal, ShieldAlert, RotateCcw, Search, Database } from 'lucide-react';
 
 export default function Logs() {
-  const { logs, clearAllData, currentUser } = useAppState();
+  const { logs, clearAllData, currentUser, showConfirm, showAlert } = useAppState();
   const [searchQuery, setSearchQuery] = useState('');
 
   const isAdmin = currentUser?.role === 'Admin';
 
   const handleResetSystem = () => {
     if (!isAdmin) {
-      alert('Akses Terbatas: Hanya Administrator Sistem Utama yang diperbolehkan memicu refresh database.');
+      showAlert('Akses Terbatas', 'Akses Terbatas: Hanya Administrator Sistem Utama yang diperbolehkan memicu refresh database.');
       return;
     }
-    if (window.confirm('PERINGATAN: Tindakan ini akan menghapus semua supplier, transaksi pembelian, dan pelunasan pembayaran yang Anda input sendiri, lalu memulihkannya ke demo bawaan awal! Lanjutkan?')) {
-      clearAllData();
-      alert('Sistem berhasil direstorasi bersih!');
-    }
+    showConfirm(
+      'Reset Database Contoh',
+      'PERINGATAN: Tindakan ini akan menghapus semua supplier, transaksi pembelian, dan pelunasan pembayaran yang Anda input sendiri, lalu memulihkannya ke demo bawaan awal! Lanjutkan?',
+      () => {
+        clearAllData();
+        showAlert('Database Berhasil Direstorasi', 'Sistem berhasil direstorasi bersih!');
+      }
+    );
   };
 
   const filteredLogs = logs.filter(l => 

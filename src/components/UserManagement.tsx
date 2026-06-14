@@ -9,7 +9,7 @@ import { User, UserRole } from '../types';
 import { Shield, Plus, ShieldCheck, Trash2, Key, Users, Sparkles, X, Edit } from 'lucide-react';
 
 export default function UserManagement() {
-  const { users, addUser, deleteUser, updateUser, currentUser } = useAppState();
+  const { users, addUser, deleteUser, updateUser, currentUser, showConfirm, showAlert } = useAppState();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formName, setFormName] = useState('');
@@ -48,7 +48,7 @@ export default function UserManagement() {
 
   const handleOpenCreateForm = () => {
     if (!isAdmin) {
-      alert('Hanya Administrator Utama yang diijinkan meremot akun ke dalam database pusat.');
+      showAlert('Akses Dibatasi', 'Hanya Administrator Utama yang diijinkan meremot akun ke dalam database pusat.');
       return;
     }
     setFormName('');
@@ -90,26 +90,30 @@ export default function UserManagement() {
 
   const handleDelete = (id: string) => {
     if (!isAdmin) {
-      alert('Akses Admin dibutuhkan untuk mengeliminasi kredensial personil.');
+      showAlert('Akses Dibatasi', 'Akses Admin dibutuhkan untuk mengeliminasi kredensial personil.');
       return;
     }
     if (id === currentUser?.id) {
-      alert('Kesalahan Keamanan: Anda tidak diperbolehkan menghapus akun aktif Anda sendiri.');
+      showAlert('Akses Ditolak', 'Kesalahan Keamanan: Anda tidak diperbolehkan menghapus akun aktif Anda sendiri.');
       return;
     }
 
-    if (window.confirm('Apakah Anda yakin ingin mencabut seluruh hak akses log dari personil ini?')) {
-      const ok = deleteUser(id);
-      if (ok) {
-        setSuccessMessage('Kredensial log dicabut sukses.');
-        setTimeout(() => setSuccessMessage(''), 3000);
+    showConfirm(
+      'Cabut Hak Akses',
+      'Apakah Anda yakin ingin mencabut seluruh hak akses log dari personil ini?',
+      () => {
+        const ok = deleteUser(id);
+        if (ok) {
+          setSuccessMessage('Kredensial log dicabut sukses.');
+          setTimeout(() => setSuccessMessage(''), 3050);
+        }
       }
-    }
+    );
   };
 
   const handleOpenEdit = (user: User) => {
     if (!isAdmin) {
-      alert('Hanya akun Admin yang diijinkan mengubah hak akses atau profil personil.');
+      showAlert('Akses Dibatasi', 'Hanya akun Admin yang diijinkan mengubah hak akses atau profil personil.');
       return;
     }
     setEditingUser(user);
