@@ -6,7 +6,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Supplier, Purchase, Payment, ActivityLog, Notification, UserRole, PurchaseStatus } from '../types';
 import { INITIAL_SUPPLIERS, INITIAL_PURCHASES, INITIAL_PAYMENTS, INITIAL_LOGS, PREDEFINED_USERS } from '../data';
-import { ShieldAlert, Info } from 'lucide-react';
 import { 
   collection, 
   doc, 
@@ -45,8 +44,6 @@ interface StateContextType {
   addSystemLog: (action: string, target: string) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
-  showConfirm: (title: string, message: string, onConfirm: () => void) => void;
-  showAlert: (title: string, message: string) => void;
 }
 
 const StateContext = createContext<StateContextType | undefined>(undefined);
@@ -80,26 +77,6 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved ? JSON.parse(saved) : INITIAL_LOGS;
   });
   const [notifications, setNotifications] = useState<Notification[]>([]);
-
-  // Dialog overrides for sandsbox/iframe compatibility
-  const [confirmConfig, setConfirmConfig] = useState<{
-    title: string;
-    message: string;
-    onConfirm: () => void;
-  } | null>(null);
-
-  const [alertConfig, setAlertConfig] = useState<{
-    title: string;
-    message: string;
-  } | null>(null);
-
-  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
-    setConfirmConfig({ title, message, onConfirm });
-  };
-
-  const showAlert = (title: string, message: string) => {
-    setAlertConfig({ title, message });
-  };
 
   // Connectivity and Authentications
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -767,80 +744,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         clearAllData,
         addSystemLog,
         markNotificationRead,
-        markAllNotificationsRead,
-        showConfirm,
-        showAlert
+        markAllNotificationsRead
       }}
     >
       {children}
-
-      {/* Custom Confirmation Modal Override for Iframe Compatibility */}
-      {confirmConfig && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[9999] animate-fade-in font-sans">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-6 border border-gray-100 space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 shrink-0 border border-rose-100">
-                <ShieldAlert className="w-5 h-5" />
-              </div>
-              <div className="space-y-1.5 flex-1 select-none text-left">
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">{confirmConfig.title}</h3>
-                <p className="text-xs text-gray-550 leading-relaxed text-gray-600">{confirmConfig.message}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setConfirmConfig(null)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-all cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  try {
-                    confirmConfig.onConfirm();
-                  } catch (err) {
-                    console.error("Error in confirmation callback:", err);
-                  }
-                  setConfirmConfig(null);
-                }}
-                className="px-5 py-2 bg-rose-605 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-md transition-all cursor-pointer"
-              >
-                Konfirmasi
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Custom Alert Modal Override */}
-      {alertConfig && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[9999] animate-fade-in font-sans">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-6 border border-gray-100 space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-100">
-                <Info className="w-5 h-5" />
-              </div>
-              <div className="space-y-1.5 flex-1 select-none text-left">
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">{alertConfig.title}</h3>
-                <p className="text-xs text-gray-550 leading-relaxed text-gray-600">{alertConfig.message}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setAlertConfig(null)}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-md transition-all cursor-pointer"
-              >
-                OK, Mengerti
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </StateContext.Provider>
   );
 };

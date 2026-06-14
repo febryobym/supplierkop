@@ -10,7 +10,7 @@ import { formatRupiah, formatDate, exportToCSV } from '../data';
 import { Plus, Search, Trash2, Landmark, CreditCard, ChevronRight, FileSpreadsheet, X, CheckCircle, Calendar, MessageSquare, ShieldAlert } from 'lucide-react';
 
 export default function Payments() {
-  const { payments, purchases, suppliers, addPayment, deletePayment, currentUser, showConfirm, showAlert } = useAppState();
+  const { payments, purchases, suppliers, addPayment, deletePayment, currentUser } = useAppState();
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,7 +35,7 @@ export default function Payments() {
 
   const handleOpenForm = () => {
     if (unpaidPurchases.length === 0) {
-      showAlert('Antrian Kosong', 'Tidak ada tagihan atau hutang faktur aktif yang membutuhkan pelunasan saat ini.');
+      alert('Tidak ada tagihan atau hutang faktur aktif yang membutuhkan pelunasan saat ini.');
       return;
     }
     const defaultPurchase = unpaidPurchases[0];
@@ -99,15 +99,11 @@ export default function Payments() {
 
   const handleDeletePayment = (id: string) => {
     if (!canDelete) return;
-    showConfirm(
-      'Batalkan Pelunasan',
-      'Apakah Anda yakin ingin membatalkan pembayaran ini? Pemotongan dana akan dianulir, sehingga sisa hutang pada supplier terkait akan bertambah kembali.',
-      () => {
-        deletePayment(id);
-        setSuccessMessage('Mutasi pembayaran berhasil dianulir.');
-        setTimeout(() => setSuccessMessage(''), 3500);
-      }
-    );
+    if (window.confirm('Batalkan pembayaran ini? Pemotongan dana akan dibatalkan, meningkatkan sisa hutang default pada supplier terkait.')) {
+      deletePayment(id);
+      setSuccessMessage('Mutasi pembayaran berhasil dianulir.');
+      setTimeout(() => setSuccessMessage(''), 3500);
+    }
   };
 
   const handleExportCSV = () => {

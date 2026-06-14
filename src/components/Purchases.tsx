@@ -10,7 +10,7 @@ import { formatRupiah, formatDate, exportToCSV } from '../data';
 import { Plus, Search, Eye, Trash2, Calendar, FileText, ShoppingCart, Percent, DollarSign, X, CheckCircle, Clock, AlertTriangle, FileSpreadsheet, Printer } from 'lucide-react';
 
 export default function Purchases() {
-  const { purchases, suppliers, addPurchase, deletePurchase, currentUser, showConfirm, showAlert } = useAppState();
+  const { purchases, suppliers, addPurchase, deletePurchase, currentUser } = useAppState();
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,7 +52,7 @@ export default function Purchases() {
 
   const handleOpenCreateForm = () => {
     if (suppliers.length === 0) {
-      showAlert('Supplier Kosong', 'Harap daftarkan supplier terlebih dahulu di tab Supplier sebelum menginput transaksi pembelian.');
+      alert('Harap daftarkan supplier terlebih dahulu di tab Supplier sebelum menginput transaksi pembelian.');
       return;
     }
     setFormSupplierId(suppliers[0].id);
@@ -138,22 +138,15 @@ export default function Purchases() {
 
   const handleDeletePurchase = (id: string) => {
     if (!canDelete) return;
-    showConfirm(
-      'Hapus Transaksi',
-      'Apakah Anda yakin ingin menghapus transaksi ini? Tindakan ini hanya diijinkan jika faktur memiliki sisa hutang utuh tanpa log riwayat pengembalian kas / pelunasan sebelumnya.',
-      () => {
-        const success = deletePurchase(id);
-        if (success) {
-          setSuccessMessage('Faktur pembelian dibatalkan dan dihapus.');
-          setTimeout(() => setSuccessMessage(''), 3000);
-        } else {
-          showAlert(
-            'Gagal Menghapus',
-            'Gagal menghapus! Faktur ini sudah memiliki mutasi pembayaran tercatat. Hapus riwayat pembayaran terkait terlebih dahulu.'
-          );
-        }
+    if (window.confirm('Hapus transaksi ini? Tindakan ini hanya diijinkan jika faktur memiliki sisa hutang utuh tanpa log riwayat pengembalian kas / pelunasan sebelumnya.')) {
+      const success = deletePurchase(id);
+      if (success) {
+        setSuccessMessage('Faktur pembelian dibatalkan dan dihapus.');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        alert('Gagal menghapus! Faktur ini sudah memiliki mutasi pembayaran tercatat. Hapus riwayat pembayaran terkait terlebih dahulu.');
       }
-    );
+    }
   };
 
   const handleCSVExport = () => {

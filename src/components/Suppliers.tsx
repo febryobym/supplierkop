@@ -10,7 +10,7 @@ import { exportToCSV } from '../data';
 import { Plus, Search, Edit2, Trash2, Mail, Phone, MapPin, Building, CreditCard, User, Landmark, X, FileSpreadsheet } from 'lucide-react';
 
 export default function Suppliers() {
-  const { suppliers, addSupplier, updateSupplier, deleteSupplier, currentUser, showConfirm, showAlert } = useAppState();
+  const { suppliers, addSupplier, updateSupplier, deleteSupplier, currentUser } = useAppState();
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -106,22 +106,15 @@ export default function Suppliers() {
 
   const handleDelete = (id: string) => {
     if (isReadOnly) return;
-    showConfirm(
-      'Hapus Supplier',
-      'Apakah Anda yakin ingin menghapus supplier ini? Tindakan ini tidak dapat dibatalkan.',
-      () => {
-        const success = deleteSupplier(id);
-        if (success) {
-          setSuccessMessage('Supplier berhasil dihapus!');
-          setTimeout(() => setSuccessMessage(''), 3000);
-        } else {
-          showAlert(
-            'Gagal Menghapus',
-            'Gagal menghapus! Supplier ini memiliki riwayat transaksi pembelian (faktur aktif) yang belum diselesaikan.'
-          );
-        }
+    if (window.confirm('Apakah Anda yakin ingin menghapus supplier ini? Tindakan ini tidak dapat dibatalkan.')) {
+      const success = deleteSupplier(id);
+      if (success) {
+        setSuccessMessage('Supplier berhasil dihapus!');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        alert('Gagal menghapus! Supplier ini memiliki riwayat transaksi pembelian (faktur aktif) yang belum diselesaikan.');
       }
-    );
+    }
   };
 
   const handleExportExcel = () => {
