@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Pembelian & Hutang Supplier",
+  "description": "Sistem manajemen pembelian barang ke supplier, pelunasan hutang, laporan jatuh tempo otomatis, dasbor analitik real-time, ekspor Excel/PDF, dan akses kontrol berbasis peran.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

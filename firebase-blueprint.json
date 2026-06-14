@@ -1,0 +1,113 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user account credential and role definition",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique user ID" },
+        "username": { "type": "string", "description": "Alphanumeric login username token" },
+        "name": { "type": "string", "description": "Full name of the user" },
+        "role": { "type": "string", "enum": ["Admin", "Manager", "Staff"], "description": "System role controlling access rights" },
+        "email": { "type": "string", "format": "email", "description": "User email address" }
+      },
+      "required": ["id", "username", "name", "role", "email"]
+    },
+    "Supplier": {
+      "title": "Supplier",
+      "description": "Master data for vendors/suppliers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique supplier ID" },
+        "name": { "type": "string", "description": "Company name of the supplier" },
+        "code": { "type": "string", "description": "Distinct uppercase matching short-code" },
+        "contactPerson": { "type": "string", "description": "Primary contact name" },
+        "phone": { "type": "string", "description": "Phone contact number" },
+        "email": { "type": "string", "format": "email", "description": "Supplier email address" },
+        "address": { "type": "string", "description": "Supplier registered street address" },
+        "bankName": { "type": "string", "description": "Bank destination for transfers" },
+        "bankAccount": { "type": "string", "description": "Bank account card/ledger number" },
+        "bankAccountHolder": { "type": "string", "description": "Bank account registered beneficiary name" }
+      },
+      "required": ["id", "name", "code", "contactPerson", "phone", "email", "address", "bankName", "bankAccount", "bankAccountHolder"]
+    },
+    "Purchase": {
+      "title": "Purchase Invoice",
+      "description": "Calculated buying ledger for tracking accounts payable and items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique invoice transaction ID" },
+        "supplierId": { "type": "string", "description": "Reference matching an existing supplier ID" },
+        "invoiceNumber": { "type": "string", "description": "External invoice voucher code" },
+        "purchaseDate": { "type": "string", "format": "date", "description": "Transaction date" },
+        "dueDate": { "type": "string", "format": "date", "description": "Maturity due date" },
+        "subTotal": { "type": "number", "description": "Item aggregate cost before tax" },
+        "tax": { "type": "number", "description": "PPN percentage applied" },
+        "taxAmount": { "type": "number", "description": "Calculated value for tax" },
+        "discount": { "type": "number", "description": "Discount IDR nominal" },
+        "total": { "type": "number", "description": "Aggregate after diskon/tax" },
+        "paidAmount": { "type": "number", "description": "Aggregated payment nominals matching invoice" },
+        "remainingAmount": { "type": "number", "description": "Accounts payable outstanding debt" },
+        "status": { "type": "string", "enum": ["Belum Lunas", "Sebagian", "Lunas"], "description": "Payment status" },
+        "notes": { "type": "string", "description": "Optional notes or invoice comments" },
+        "createdBy": { "type": "string", "description": "User name who created this invoice" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "UTC timestamp of entry" }
+      },
+      "required": ["id", "supplierId", "invoiceNumber", "purchaseDate", "dueDate", "subTotal", "tax", "taxAmount", "discount", "total", "paidAmount", "remainingAmount", "status", "createdBy", "createdAt"]
+    },
+    "Payment": {
+      "title": "Payment Voucher",
+      "description": "Payment disbursement towards specific accounts payable purchase invoices",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique bank transfer or cash voucher ID" },
+        "purchaseId": { "type": "string", "description": "Matching target purchase invoice ID" },
+        "amount": { "type": "number", "description": "Nominal amount of rupiah settled" },
+        "paymentDate": { "type": "string", "format": "date", "description": "Transaction finalization date" },
+        "paymentMethod": { "type": "string", "enum": ["Cash", "Transfer Bank", "Cek_Giro", "Lainnya"], "description": "Disbursement path" },
+        "referenceNumber": { "type": "string", "description": "Receipt reference or hash number" },
+        "notes": { "type": "string", "description": "Optional transaction remarks" },
+        "receivedBy": { "type": "string", "description": "Staff who validated the payment transaction" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["id", "purchaseId", "amount", "paymentDate", "paymentMethod", "receivedBy", "createdAt"]
+    },
+    "ActivityLog": {
+      "title": "Activity Audit Log",
+      "description": "Chronological record of state mutations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Log ID" },
+        "userId": { "type": "string", "description": "User origin ID" },
+        "userName": { "type": "string", "description": "User's display name" },
+        "userRole": { "type": "string", "description": "Role level" },
+        "action": { "type": "string", "description": "System command name" },
+        "target": { "type": "string", "description": "Target identifier" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Action timestamp" }
+      },
+      "required": ["id", "userId", "userName", "userRole", "action", "target", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of platform user accounts with access roles"
+    },
+    "/suppliers/{supplierId}": {
+      "schema": "Supplier",
+      "description": "Database table storing vendor contact records and bank options"
+    },
+    "/purchases/{purchaseId}": {
+      "schema": "Purchase",
+      "description": "Calculated invoices denoting purchases, outstanding metrics and dues"
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Cash disbursements logs mapped to clear outstanding balances"
+    },
+    "/logs/{logId}": {
+      "schema": "ActivityLog",
+      "description": "Central append-only ledger for all security events"
+    }
+  }
+}
