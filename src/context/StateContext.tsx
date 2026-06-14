@@ -180,6 +180,53 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('sh_logs', JSON.stringify(logs));
   }, [logs]);
 
+  // Database Initializer (Genesis Seeding)
+  useEffect(() => {
+    if (!isAuthReady || isOfflineFallback) return;
+
+    const seedDatabaseIfNeeded = async () => {
+      try {
+        const genesisRef = doc(db, 'system_config', 'genesis');
+        const genesisSnap = await getDocFromServer(genesisRef);
+        if (!genesisSnap.exists()) {
+          console.log("No seed signature found. Initializing master demo collections...");
+          
+          // Seed Users
+          for (const u of PREDEFINED_USERS) {
+            await setDoc(doc(db, 'users', u.id), u);
+          }
+          // Seed Suppliers
+          for (const s of INITIAL_SUPPLIERS) {
+            await setDoc(doc(db, 'suppliers', s.id), s);
+          }
+          // Seed Purchases
+          for (const p of INITIAL_PURCHASES) {
+            await setDoc(doc(db, 'purchases', p.id), p);
+          }
+          // Seed Payments
+          for (const pay of INITIAL_PAYMENTS) {
+            await setDoc(doc(db, 'payments', pay.id), pay);
+          }
+          // Seed Logs
+          for (const log of INITIAL_LOGS) {
+            await setDoc(doc(db, 'logs', log.id), log);
+          }
+          
+          // Seed Signature
+          await setDoc(genesisRef, {
+            initialized: true,
+            createdAt: new Date().toISOString()
+          });
+          console.log("Database seeded successfully.");
+        }
+      } catch (error) {
+        console.warn("Database initialization check paused/skipped (offline or initial connection buffering):", error);
+      }
+    };
+
+    seedDatabaseIfNeeded();
+  }, [isAuthReady, isOfflineFallback]);
+
   // ONLINE MODE: Real-time Firebase listeners
   useEffect(() => {
     if (!isAuthReady || isOfflineFallback) return;
@@ -189,11 +236,12 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const list: User[] = [];
       snapshot.forEach((doc) => list.push(doc.data() as User));
       if (list.length === 0) {
+        // Safe lock: ensure at least default users exist so login is always accessible
         PREDEFINED_USERS.forEach(async (u) => {
           try {
             await setDoc(doc(db, 'users', u.id), u);
           } catch (e) {
-            console.error("Failed to seed User:", e);
+            console.error("Failed to seed User safeguard:", e);
           }
         });
       } else {
@@ -207,17 +255,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const unsubSuppliers = onSnapshot(collection(db, 'suppliers'), (snapshot) => {
       const list: Supplier[] = [];
       snapshot.forEach((doc) => list.push(doc.data() as Supplier));
-      if (list.length === 0) {
-        INITIAL_SUPPLIERS.forEach(async (s) => {
-          try {
-            await setDoc(doc(db, 'suppliers', s.id), s);
-          } catch (e) {
-            console.error("Failed to seed Supplier:", e);
-          }
-        });
-      } else {
-        setSuppliers(list);
-      }
+      setSuppliers(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'suppliers');
     });
@@ -226,18 +264,8 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const unsubPurchases = onSnapshot(collection(db, 'purchases'), (snapshot) => {
       const list: Purchase[] = [];
       snapshot.forEach((doc) => list.push(doc.data() as Purchase));
-      if (list.length === 0) {
-        INITIAL_PURCHASES.forEach(async (p) => {
-          try {
-            await setDoc(doc(db, 'purchases', p.id), p);
-          } catch (e) {
-            console.error("Failed to seed Purchase:", e);
-          }
-        });
-      } else {
-        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setPurchases(list);
-      }
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setPurchases(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'purchases');
     });
@@ -246,18 +274,8 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const unsubPayments = onSnapshot(collection(db, 'payments'), (snapshot) => {
       const list: Payment[] = [];
       snapshot.forEach((doc) => list.push(doc.data() as Payment));
-      if (list.length === 0) {
-        INITIAL_PAYMENTS.forEach(async (pay) => {
-          try {
-            await setDoc(doc(db, 'payments', pay.id), pay);
-          } catch (e) {
-            console.error("Failed to seed Payment:", e);
-          }
-        });
-      } else {
-        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setPayments(list);
-      }
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setPayments(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'payments');
     });
@@ -266,18 +284,8 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const unsubLogs = onSnapshot(collection(db, 'logs'), (snapshot) => {
       const list: ActivityLog[] = [];
       snapshot.forEach((doc) => list.push(doc.data() as ActivityLog));
-      if (list.length === 0) {
-        INITIAL_LOGS.forEach(async (l) => {
-          try {
-            await setDoc(doc(db, 'logs', l.id), l);
-          } catch (e) {
-            console.error("Failed to seed Log:", e);
-          }
-        });
-      } else {
-        list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        setLogs(list);
-      }
+      list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setLogs(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'logs');
     });
