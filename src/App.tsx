@@ -292,34 +292,65 @@ function AppContent() {
           </div>
         </header>
 
-        {/* Firebase Authentication Error / Offline Mode Guideline Alert block */}
+        {/* Firebase Connection / Authentication Fallback Banner */}
         {isOfflineFallback && (
-          <div className="bg-amber-50 border-b border-amber-200 px-8 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in text-xs text-amber-900 select-none shrink-0 border-l-4 border-l-amber-500">
-            <div className="flex gap-3 items-start sm:items-center">
-              <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 sm:mt-0 animate-pulse" />
-              <div>
-                <p className="font-bold text-amber-950 font-sans">
-                  Mode Hubungan Offline Aktif (Firebase Auth Belum Dikonfigurasi)
-                </p>
-                <p className="text-amber-700 leading-normal mt-0.5">
-                  Proyek ini beralih sementara ke penyimpanan lokal simulasi (Local Storage) untuk menjamin kelancaran peninjauan sandbox Anda. Untuk mengaktifkan Firebase Cloud Sync nyata:
-                </p>
-                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-amber-800">
-                  <span>1. Buka Konsol Firebase</span>
-                  <span>2. Masuk ke tab Authentication &gt; Sign-in method &gt; Aktifkan Anonim (Anonymous)</span>
-                  <span>3. Muat Ulang Halaman</span>
+          (() => {
+            const isFirestoreErr = authError?.startsWith('firestore-error:');
+            const cleanErr = authError ? authError.replace(/^(firestore-error:|auth-error:)\s*/, '') : '';
+            const consoleUrl = isFirestoreErr 
+              ? 'https://console.firebase.google.com/project/supplierkoperasi/firestore/databases/ai-studio-dcd95500-880b-4b6b-abb9-c86cffd7fa56/data'
+              : 'https://console.firebase.google.com/project/supplierkoperasi/authentication/providers';
+            
+            return (
+              <div className="bg-amber-50 border-b border-amber-200 px-8 py-3.5 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 animate-fade-in text-xs text-amber-900 select-none shrink-0 border-l-4 border-l-amber-500">
+                <div className="flex gap-3 items-start">
+                  <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
+                  <div>
+                    <p className="font-bold text-amber-950 font-sans">
+                      {isFirestoreErr 
+                        ? 'Cloud Firestore Belum Dibuat atau Diaktifkan' 
+                        : 'Mode Simpan Lokal Aktif (Firebase Auth Belum Dikonfigurasi)'}
+                    </p>
+                    <p className="text-amber-700 leading-normal mt-0.5">
+                      {isFirestoreErr 
+                        ? 'Database Cloud Firestore Anda tidak merespon atau belum dibuat di dalam Konsol Firebase Anda. Aplikasi beralih ke penyimpanan lokal (Local Storage) untuk menjaga agar data mutasi, user, dan supplier tetap bisa diisi dengan aman.' 
+                        : 'Penyedia otentikasi Anonymous (Anonim) belum diaktifkan di konsol Firebase Anda. Aplikasi beralih sementara ke penyimpanan lokal (Local Storage) agar Anda tetap dapat melakukan demo dengan lancar.'}
+                    </p>
+                    {cleanErr && (
+                      <p className="text-[10px] bg-amber-100/50 text-amber-950 px-2 py-1 rounded-sm font-mono mt-1 w-fit max-w-full truncate">
+                        Log Error: {cleanErr}
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-col gap-1.5 list-decimal pl-4 font-mono text-[10px] text-amber-800">
+                      {isFirestoreErr ? (
+                        <>
+                          <div>1. Klik tombol <strong className="font-sans text-amber-950">"Buka Konsol Firestore"</strong> di sebelah kanan.</div>
+                          <div>2. Klik tombol <strong className="font-sans text-amber-950">"Create database"</strong> (Buat database).</div>
+                          <div>3. Setel nama/ID Database ke: <strong className="font-mono text-indigo-700 bg-indigo-50 border border-indigo-150 rounded px-1 text-[9px]">ai-studio-dcd95500-880b-4b6b-abb9-c86cffd7fa56</strong>.</div>
+                          <div>4. Pilih lokasi terdekat (misal <em className="italic">asia-southeast1</em>) & setel dalam Test Mode atau rules default, kemudian <strong className="font-sans text-amber-950">Muat Ulang Halaman ini</strong>.</div>
+                        </>
+                      ) : (
+                        <>
+                          <div>1. Klik tombol <strong className="font-sans text-amber-950">"Buka Konsol Firebase Auth"</strong> di sebelah kanan.</div>
+                          <div>2. Pilih tab <strong className="font-sans text-amber-950">"Sign-in method"</strong> &gt; Klik <strong className="font-sans text-amber-950">"Add new provider"</strong>.</div>
+                          <div>3. Cari <strong className="font-bold font-sans text-indigo-700">Anonymous</strong> (Anonim) dan klik <strong className="font-sans text-amber-950">Enable</strong> (Aktifkan).</div>
+                          <div>4. <strong className="font-sans text-amber-950">Muat Ulang Halaman ini</strong> untuk mulai melakukan sinkronisasi cloud real-time.</div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
+                <a
+                  href={consoleUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-750 text-white font-semibold rounded-xl text-[11px] shrink-0 transition-all shadow-sm cursor-pointer whitespace-nowrap hover:shadow-md self-end xl:self-auto"
+                >
+                  {isFirestoreErr ? "Buka Konsol Firestore \u2192" : "Buka Konsol Firebase Auth \u2192"}
+                </a>
               </div>
-            </div>
-            <a
-              href="https://console.firebase.google.com/project/supplierkoperasi/authentication/providers"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-750 text-white font-semibold rounded-xl text-[11px] shrink-0 transition-all shadow-sm cursor-pointer whitespace-nowrap hover:shadow-md"
-            >
-              Buka Konsol Firebase &rarr;
-            </a>
-          </div>
+            );
+          })()
         )}
 
         {/* 4. WORK VIEW TARGET RENDER */}

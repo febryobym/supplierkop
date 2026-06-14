@@ -85,29 +85,33 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Initialize Firebase Auth + Connection Validation
   useEffect(() => {
+    const checkFirestoreConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'system_config', 'genesis'));
+        setIsOfflineFallback(false);
+        setAuthError(null);
+      } catch (error: any) {
+        console.warn("Firestore connection check failed, falling back to local mode:", error);
+        const errMsg = error instanceof Error ? error.message : String(error);
+        setAuthError(`firestore-error: ${errMsg}`);
+        setIsOfflineFallback(true);
+      }
+    };
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setAuthError(null);
-        setIsOfflineFallback(false);
         setIsAuthReady(true);
-        try {
-          await getDocFromServer(doc(db, 'test', 'connection'));
-        } catch (error) {
-          if (error instanceof Error && error.message.includes('the client is offline')) {
-            console.warn("Firebase client is currently offline. Operating in cache.");
-          }
-        }
+        await checkFirestoreConnection();
       } else {
         signInAnonymously(auth)
-          .then(() => {
-            setAuthError(null);
-            setIsOfflineFallback(false);
+          .then(async () => {
             setIsAuthReady(true);
+            await checkFirestoreConnection();
           })
           .catch((err: any) => {
-            console.warn("Firebase Anonymous Auth not available (Anonymous provider might be disabled in Firebase Console):", err?.message || err);
+            console.warn("Firebase Anonymous Auth not available:", err?.message || err);
             const errMsg = err instanceof Error ? err.message : String(err);
-            setAuthError(errMsg);
+            setAuthError(`auth-error: ${errMsg}`);
             setIsOfflineFallback(true);
             setIsAuthReady(true);
           });
