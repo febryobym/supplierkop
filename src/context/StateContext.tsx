@@ -28,7 +28,7 @@ interface StateContextType {
   notifications: Notification[];
   authError: string | null;
   isOfflineFallback: boolean;
-  login: (username: string) => boolean;
+  login: (email: string, password: string) => boolean;
   logout: () => void;
   addSupplier: (supplier: Omit<Supplier, 'id'>) => void;
   updateSupplier: (supplier: Supplier) => void;
@@ -352,8 +352,8 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Auth Operations
-  const login = (username: string): boolean => {
-    const found = users.find((u) => u.username.toLowerCase() === username.toLowerCase());
+  const login = (email: string, password: string): boolean => {
+    const found = users.find((u) => u.email.toLowerCase() === email.toLowerCase() && (u.password || 'password') === password);
     if (found) {
       setCurrentUser(found);
       const id = `log-${Date.now()}`;

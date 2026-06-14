@@ -12,21 +12,24 @@ export const PREDEFINED_USERS: User[] = [
     username: 'admin',
     name: 'Budi Santoso',
     role: 'Admin',
-    email: 'budi.admin@supplierku.com'
+    email: 'budi.admin@supplierku.com',
+    password: 'admin123'
   },
   {
     id: 'usr-2',
     username: 'manager',
     name: 'Siti Rahma',
     role: 'Manager',
-    email: 'siti.manager@supplierku.com'
+    email: 'siti.manager@supplierku.com',
+    password: 'manager123'
   },
   {
     id: 'usr-3',
     username: 'staff',
     name: 'Andi Wijaya',
     role: 'Staff',
-    email: 'andi.staff@supplierku.com'
+    email: 'andi.staff@supplierku.com',
+    password: 'staff123'
   }
 ];
 

@@ -6,16 +6,23 @@
 import React, { useState } from 'react';
 import { useAppState } from '../context/StateContext';
 import { User, UserRole } from '../types';
-import { Shield, Plus, ShieldCheck, Trash2, Key, Users, Sparkles, X } from 'lucide-react';
+import { Shield, Plus, ShieldCheck, Trash2, Key, Users, Sparkles, X, Edit } from 'lucide-react';
 
 export default function UserManagement() {
-  const { users, addUser, deleteUser, currentUser } = useAppState();
+  const { users, addUser, deleteUser, updateUser, currentUser } = useAppState();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formName, setFormName] = useState('');
   const [formUsername, setFormUsername] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formRole, setFormRole] = useState<UserRole>('Staff');
+  const [formPassword, setFormPassword] = useState('');
+
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState<UserRole>('Staff');
+  const [editPassword, setEditPassword] = useState('');
 
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -48,6 +55,7 @@ export default function UserManagement() {
     setFormUsername('');
     setFormEmail('');
     setFormRole('Staff');
+    setFormPassword('');
     setErrorMessage('');
     setIsFormOpen(true);
   };
@@ -65,7 +73,8 @@ export default function UserManagement() {
       username: formUsername.trim().toLowerCase(),
       name: formName.trim(),
       role: formRole,
-      email: formEmail.trim().toLowerCase()
+      email: formEmail.trim().toLowerCase(),
+      password: formPassword.trim() || 'password'
     };
 
     const success = addUser(compiledUser);
@@ -96,6 +105,42 @@ export default function UserManagement() {
         setTimeout(() => setSuccessMessage(''), 3000);
       }
     }
+  };
+
+  const handleOpenEdit = (user: User) => {
+    if (!isAdmin) {
+      alert('Hanya akun Admin yang diijinkan mengubah hak akses atau profil personil.');
+      return;
+    }
+    setEditingUser(user);
+    setEditName(user.name);
+    setEditEmail(user.email);
+    setEditRole(user.role);
+    setEditPassword(user.password || '');
+    setErrorMessage('');
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin || !editingUser) return;
+
+    if (!editName || !editEmail) {
+      setErrorMessage('Harap isi semua kolom!');
+      return;
+    }
+
+    const updatedUser: User = {
+      ...editingUser,
+      name: editName.trim(),
+      email: editEmail.trim().toLowerCase(),
+      role: editRole,
+      password: editPassword.trim() || editingUser.password || 'password'
+    };
+
+    updateUser(updatedUser);
+    setSuccessMessage(`Hak akses/profil untuk "${editName}" berhasil diperbarui.`);
+    setEditingUser(null);
+    setTimeout(() => setSuccessMessage(''), 3000);
   };
 
   return (
@@ -169,13 +214,13 @@ export default function UserManagement() {
 
               {/* Specs detailed block */}
               <div className="space-y-2 text-xs border-y border-gray-50 py-3 font-mono">
-                <div className="flex justify-between">
-                  <span className="text-gray-400 font-sans">Token Login:</span>
-                  <span className="font-bold text-gray-800 bg-gray-50 border px-1.5 py-0.5 rounded-sm">{u.username}</span>
-                </div>
                 <div className="flex justify-between truncate max-w-full">
                   <span className="text-gray-400 font-sans">E-mail:</span>
-                  <span className="text-gray-600 truncate max-w-[140px]" title={u.email}>{u.email}</span>
+                  <span className="text-gray-700 font-semibold truncate max-w-[160px]" title={u.email}>{u.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400 font-sans">Kata Sandi:</span>
+                  <span className="font-bold text-indigo-600 bg-indigo-50 border border-indigo-100/50 px-1.5 py-0.5 rounded-md text-[10px]">{u.password || 'password'}</span>
                 </div>
               </div>
 
@@ -189,15 +234,28 @@ export default function UserManagement() {
                   <span className="text-[10px] text-gray-400">Terdaftar</span>
                 )}
 
-                {isAdmin && !isSelf && (
-                  <button
-                    onClick={() => handleDelete(u.id)}
-                    className="text-[10px] text-gray-400 hover:text-rose-600 flex items-center gap-1 cursor-pointer"
-                    title="Cabut Akses Log"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Hapus Kredensial</span>
-                  </button>
+                {isAdmin && (
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button
+                      onClick={() => handleOpenEdit(u)}
+                      className="text-[10px] text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer font-semibold bg-indigo-50 hover:bg-indigo-100/70 border border-indigo-200/50 px-2 py-1 rounded-lg"
+                      title="Ubah Hak Akses / Profil"
+                    >
+                      <Edit className="w-3 h-3" />
+                      <span>Ubah Akses</span>
+                    </button>
+
+                    {!isSelf && (
+                      <button
+                        onClick={() => handleDelete(u.id)}
+                        className="text-[10px] text-gray-450 hover:text-rose-600 flex items-center gap-1 cursor-pointer border border-transparent hover:border-rose-100 hover:bg-rose-50/50 px-2 py-1 rounded-lg transition-all"
+                        title="Cabut Akses Log"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Hapus</span>
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -284,11 +342,24 @@ export default function UserManagement() {
                 </select>
               </div>
 
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block block-sans">Kata Sandi (Password)*</label>
+                <input
+                  type="text"
+                  required
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
+                  placeholder="Masukkan kata sandi baru (misal: staff123)"
+                  className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:outline-hidden"
+                />
+              </div>
+
               {/* Provisian info warning */}
               <div className="bg-gray-50/50 p-3 rounded-xl border border-gray-150 flex items-start gap-1.5 text-[10px] text-gray-500 leading-relaxed">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-500 mt-0.5 shrink-0" />
                 <span>
-                  Personil yang diterbitkan akan langsung bisa login menggunakan Token Username yang Anda rancang tanpa password pada sandbox demo ini.
+                  Personil yang diterbitkan akan langsung bisa login menggunakan Alamat E-mail dan Kata Sandi yang baru Anda rancang.
                 </span>
               </div>
 
@@ -306,6 +377,131 @@ export default function UserManagement() {
                   className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-md cursor-pointer"
                 >
                   Terbitkan Akun
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* FORM: Edit User Slide-over overlay */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-gray-100 max-h-[90vh] flex flex-col">
+            
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Ubah Hak Akses & Profil Personil</h3>
+                <p className="text-xs text-gray-500">Edit perincian akun dan tingkatan peran.</p>
+              </div>
+              <button 
+                onClick={() => setEditingUser(null)} 
+                className="p-1.5 hover:bg-gray-100 rounded-xl cursor-pointer"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+              {errorMessage && (
+                <div className="bg-rose-50 border border-rose-100 text-rose-800 p-3 rounded-xl">
+                  {errorMessage}
+                </div>
+              )}
+
+              {/* Username (Read only Info) */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Username Login (Tidak bisa diubah)</label>
+                <input
+                  type="text"
+                  disabled
+                  value={editingUser.username}
+                  className="w-full border border-gray-200 bg-gray-100 text-gray-550 rounded-xl px-3 py-2 text-xs font-mono outline-none"
+                />
+              </div>
+
+              {/* Nama Personil */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Nama Lengkap*</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Contoh: Andi Saputra"
+                  className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:outline-hidden"
+                />
+              </div>
+
+              {/* Email Address */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Alamat E-mail*</label>
+                <input
+                  type="email"
+                  required
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="contoh@bumn.com"
+                  className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:outline-hidden font-mono"
+                />
+              </div>
+
+              {/* Role Type */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Tentukan Peran / Jabatan*</label>
+                {editingUser.id === currentUser?.id ? (
+                  <div>
+                    <input
+                      type="text"
+                      disabled
+                      value={editRole}
+                      className="w-full border border-gray-200 bg-gray-100 text-gray-500 rounded-xl px-3 py-2 text-xs font-semibold"
+                    />
+                    <p className="text-[10px] text-amber-600 mt-1">
+                      Anda tidak diperkenankan menurunkan atau mengubah jabatan aktif Anda sendiri untuk mencegah lockout.
+                    </p>
+                  </div>
+                ) : (
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value as UserRole)}
+                    className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2 text-xs outline-hidden font-medium"
+                  >
+                    <option value="Staff">Staff (Input sahaja, No deletions)</option>
+                    <option value="Manager">Manager (Persetujuan & Laporan Audit)</option>
+                    <option value="Admin">Admin (Kontrol Penuh Server)</option>
+                  </select>
+                )}
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block block-sans">Kata Sandi (Password)*</label>
+                <input
+                  type="text"
+                  required
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="Contoh: passwordrahasia"
+                  className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:outline-hidden"
+                />
+              </div>
+
+              {/* Form submit/abort buttons */}
+              <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-md cursor-pointer"
+                >
+                  Simpan Perubahan
                 </button>
               </div>
 
