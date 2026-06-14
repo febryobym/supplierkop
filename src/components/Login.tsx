@@ -166,7 +166,6 @@ export default function Login() {
                   <div className="space-y-0.5">
                     <p className="text-xs font-bold text-gray-800 font-sans group-hover:text-indigo-700">{u.name}</p>
                     <p className="text-[9px] text-gray-450 font-mono leading-none mt-0.5">{u.email}</p>
-                    <p className="text-[9px] text-indigo-600 font-mono leading-none mt-1 font-semibold">pass: {u.password || 'password'}</p>
                   </div>
                   
                   <span className={`inline-block px-2.5 py-0.5 rounded-md text-[9px] font-black tracking-wider uppercase shrink-0 font-mono ${

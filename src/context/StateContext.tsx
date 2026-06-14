@@ -122,6 +122,23 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('sh_current_user', JSON.stringify(currentUser));
   }, [currentUser]);
 
+  // Keep currentUser state in sync with master users list updates (e.g. password or role changes)
+  useEffect(() => {
+    if (!currentUser) return;
+    const freshUser = users.find((u) => u.id === currentUser.id);
+    if (freshUser) {
+      if (
+        freshUser.name !== currentUser.name ||
+        freshUser.email !== currentUser.email ||
+        freshUser.role !== currentUser.role ||
+        freshUser.password !== currentUser.password ||
+        freshUser.username !== currentUser.username
+      ) {
+        setCurrentUser(freshUser);
+      }
+    }
+  }, [users, currentUser]);
+
   // OFFLINE MODE: Load list states from LocalStorage or seed defaults
   useEffect(() => {
     if (!isOfflineFallback) return;
@@ -142,36 +159,26 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setLogs(savedLogs ? JSON.parse(savedLogs) : INITIAL_LOGS);
   }, [isOfflineFallback]);
 
-  // OFFLINE MODE: Write state changes back to LocalStorage to mock database durability
+  // Write state changes back to LocalStorage to guarantee robust offline caching and session durability
   useEffect(() => {
-    if (isOfflineFallback) {
-      localStorage.setItem('sh_users', JSON.stringify(users));
-    }
-  }, [users, isOfflineFallback]);
+    localStorage.setItem('sh_users', JSON.stringify(users));
+  }, [users]);
 
   useEffect(() => {
-    if (isOfflineFallback) {
-      localStorage.setItem('sh_suppliers', JSON.stringify(suppliers));
-    }
-  }, [suppliers, isOfflineFallback]);
+    localStorage.setItem('sh_suppliers', JSON.stringify(suppliers));
+  }, [suppliers]);
 
   useEffect(() => {
-    if (isOfflineFallback) {
-      localStorage.setItem('sh_purchases', JSON.stringify(purchases));
-    }
-  }, [purchases, isOfflineFallback]);
+    localStorage.setItem('sh_purchases', JSON.stringify(purchases));
+  }, [purchases]);
 
   useEffect(() => {
-    if (isOfflineFallback) {
-      localStorage.setItem('sh_payments', JSON.stringify(payments));
-    }
-  }, [payments, isOfflineFallback]);
+    localStorage.setItem('sh_payments', JSON.stringify(payments));
+  }, [payments]);
 
   useEffect(() => {
-    if (isOfflineFallback) {
-      localStorage.setItem('sh_logs', JSON.stringify(logs));
-    }
-  }, [logs, isOfflineFallback]);
+    localStorage.setItem('sh_logs', JSON.stringify(logs));
+  }, [logs]);
 
   // ONLINE MODE: Real-time Firebase listeners
   useEffect(() => {
@@ -633,6 +640,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } catch (error) {
         handleFirestoreError(error, OperationType.UPDATE, `users/${updated.id}`);
       }
+    }
+
+    if (currentUser && updated.id === currentUser.id) {
+      setCurrentUser(updated);
     }
   };
 
