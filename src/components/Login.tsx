@@ -39,15 +39,8 @@ export default function Login() {
 
   const handleSelectProfile = (name: string, email: string, passwordText: string) => {
     setTypedEmail(email);
-    setTypedPassword(''); // Force manual input for security verification
-    setSelectedProfileName(name);
-    setSelectedProfilePass(passwordText);
+    setTypedPassword(passwordText); // Auto-fill password directly for seamless demo testing
     setErrorText('');
-    
-    // Focus the password input
-    setTimeout(() => {
-      passwordInputRef.current?.focus();
-    }, 60);
   };
 
   return (
@@ -76,18 +69,6 @@ export default function Login() {
           <div className="bg-rose-50 border border-rose-100 text-rose-800 text-xs p-3 rounded-xl flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 shrink-0 text-rose-600" />
             <p className="leading-snug">{errorText}</p>
-          </div>
-        )}
-
-        {selectedProfileName && (
-          <div className="bg-indigo-50 border border-indigo-100 text-indigo-900 text-xs p-3.5 rounded-2xl flex items-start gap-2.5 animate-fade-in">
-            <Info className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
-            <div className="space-y-0.5">
-              <p className="font-bold font-sans text-indigo-950">Profil Terpilih: {selectedProfileName}</p>
-              <p className="text-indigo-700 text-[11px] leading-relaxed">
-                Demi keamanan, silakan isi kolom password di bawah menggunakan kata sandi: <span className="font-mono font-black text-indigo-950 bg-indigo-150 px-1.5 py-0.5 rounded-md">{selectedProfilePass}</span> lalu klik <span className="font-bold">Verifikasi Masuk</span>.
-              </p>
-            </div>
           </div>
         )}
 
