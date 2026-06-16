@@ -46,12 +46,15 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
       {/* Visual Launcher Badge */}
-      <div className="flex items-center gap-2 mb-6 select-none">
-        <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-extrabold shadow-lg shadow-indigo-500/20 text-sm">
-          KG
-        </div>
+      <div className="flex items-center gap-3 mb-6 select-none">
+        <img 
+          src="https://upload.wikimedia.org/wikipedia/commons/9/90/National_emblem_of_Indonesia_Garuda_Pancasila.svg" 
+          alt="Logo Garuda Pancasila"
+          referrerPolicy="no-referrer"
+          className="w-10 h-10 object-contain shrink-0"
+        />
         <div>
-          <h2 className="text-sm font-black tracking-tight text-gray-900 uppercase font-sans">Koperasi GMP</h2>
+          <h2 className="text-sm font-black tracking-tight text-gray-900 uppercase font-sans">Koperasi Garuda Merah Putih</h2>
           <p className="text-[10px] text-gray-400 font-mono">Accounts Payable & Supplier Manager</p>
         </div>
       </div>
