@@ -9,6 +9,14 @@ import { Purchase, PurchaseItem, PurchaseStatus } from '../types';
 import { formatRupiah, formatDate, exportToCSV } from '../data';
 import { Plus, Search, Eye, Trash2, Calendar, FileText, ShoppingCart, Percent, DollarSign, X, CheckCircle, Clock, AlertTriangle, FileSpreadsheet, Printer } from 'lucide-react';
 
+interface FormLineItem {
+  itemName: string;
+  quantity: string | number;
+  unit: string;
+  price: number;
+  total: number;
+}
+
 export default function Purchases() {
   const { purchases, suppliers, addPurchase, deletePurchase, currentUser } = useAppState();
 
@@ -32,8 +40,8 @@ export default function Purchases() {
   const [formDiscount, setFormDiscount] = useState<number>(0);
 
   // Line items state
-  const [lineItems, setLineItems] = useState<Omit<PurchaseItem, 'id'>[]>([
-    { itemName: '', quantity: 1, unit: 'Pcs', price: 0, total: 0 }
+  const [lineItems, setLineItems] = useState<FormLineItem[]>([
+    { itemName: '', quantity: '1', unit: 'Pcs', price: 0, total: 0 }
   ]);
 
   // Invoice Detail Viewer State
@@ -46,7 +54,10 @@ export default function Purchases() {
   const canDelete = currentUser?.role !== 'Staff';
 
   // Calculations for active form
-  const formSubTotal = lineItems.reduce((acc, item) => acc + (item.quantity * item.price), 0);
+  const formSubTotal = lineItems.reduce((acc, item) => {
+    const q = typeof item.quantity === 'string' ? (parseFloat(item.quantity.replace(',', '.')) || 0) : item.quantity;
+    return acc + (q * item.price);
+  }, 0);
   const formTaxAmount = Math.round((formSubTotal - formDiscount) * (formTaxPercent / 100));
   const formTotal = Math.max(0, formSubTotal - formDiscount + formTaxAmount);
 
@@ -66,13 +77,13 @@ export default function Purchases() {
     setFormNotes('');
     setFormTaxPercent(11);
     setFormDiscount(0);
-    setLineItems([{ itemName: '', quantity: 1, unit: 'Pcs', price: 0, total: 0 }]);
+    setLineItems([{ itemName: '', quantity: '1', unit: 'Pcs', price: 0, total: 0 }]);
     setErrorMessage('');
     setIsFormOpen(true);
   };
 
   const handleAddLineItem = () => {
-    setLineItems([...lineItems, { itemName: '', quantity: 1, unit: 'Pcs', price: 0, total: 0 }]);
+    setLineItems([...lineItems, { itemName: '', quantity: '1', unit: 'Pcs', price: 0, total: 0 }]);
   };
 
   const handleRemoveLineItem = (index: number) => {
@@ -80,16 +91,19 @@ export default function Purchases() {
     setLineItems(lineItems.filter((_, i) => i !== index));
   };
 
-  const handleLineItemChange = (index: number, field: keyof Omit<PurchaseItem, 'id'>, value: any) => {
+  const handleLineItemChange = (index: number, field: keyof FormLineItem, value: any) => {
     const updated = [...lineItems];
     if (field === 'quantity') {
-      const q = Math.max(0, parseInt(value) || 0);
-      updated[index].quantity = q;
+      // Allow only numbers, dot, and comma
+      const cleaned = String(value).replace(/[^0-9.,\-]/g, '');
+      updated[index].quantity = cleaned;
+      const q = parseFloat(cleaned.replace(',', '.')) || 0;
       updated[index].total = q * updated[index].price;
     } else if (field === 'price') {
       const p = Math.max(0, parseFloat(value) || 0);
       updated[index].price = p;
-      updated[index].total = updated[index].quantity * p;
+      const q = typeof updated[index].quantity === 'string' ? (parseFloat(updated[index].quantity.replace(',', '.')) || 0) : updated[index].quantity;
+      updated[index].total = q * p;
     } else {
       updated[index][field] = value as never;
     }
@@ -105,16 +119,26 @@ export default function Purchases() {
     }
 
     // Filter out blank lines
-    const validItems = lineItems.filter(item => item.itemName.trim() !== '' && item.quantity > 0 && item.price > 0);
+    const validItems = lineItems.filter(item => {
+      const qty = typeof item.quantity === 'string' ? (parseFloat(item.quantity.replace(',', '.')) || 0) : item.quantity;
+      return item.itemName.trim() !== '' && qty > 0 && item.price > 0;
+    });
     if (validItems.length === 0) {
       setErrorMessage('Faktur wajib diisi minimal 1 barang dengan kuantitas & harga valid!');
       return;
     }
 
-    const compiledItems: PurchaseItem[] = validItems.map((item, idx) => ({
-      ...item,
-      id: `itm-${Date.now()}-${idx}`
-    }));
+    const compiledItems: PurchaseItem[] = validItems.map((item, idx) => {
+      const qty = typeof item.quantity === 'string' ? (parseFloat(item.quantity.replace(',', '.')) || 0) : item.quantity;
+      return {
+        itemName: item.itemName,
+        quantity: qty,
+        unit: item.unit,
+        price: item.price,
+        total: qty * item.price,
+        id: `itm-${Date.now()}-${idx}`
+      };
+    });
 
     // Trigger action in StateContext
     addPurchase({
@@ -506,9 +530,9 @@ export default function Purchases() {
                           {/* Kuantitas */}
                           <td className="p-2">
                             <input
-                              type="number"
+                              type="text"
                               required
-                              min="1"
+                              inputMode="decimal"
                               value={item.quantity}
                               onChange={(e) => handleLineItemChange(idx, 'quantity', e.target.value)}
                               className="w-full text-center px-2 py-1.5 border border-gray-200 rounded-lg focus:border-indigo-500 outline-hidden font-mono"
@@ -543,7 +567,7 @@ export default function Purchases() {
 
                           {/* Line Total */}
                           <td className="p-2 text-right font-medium text-gray-700 font-mono">
-                            {formatRupiah(item.quantity * item.price)}
+                            {formatRupiah((typeof item.quantity === 'string' ? (parseFloat(item.quantity.replace(',', '.')) || 0) : item.quantity) * item.price)}
                           </td>
 
                           {/* Delete Action row */}
