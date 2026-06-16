@@ -70,7 +70,7 @@ function AppContent() {
       <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-950 text-slate-100 shrink-0 select-none">
         {/* Brand Banner */}
         <div className="p-6 border-b border-slate-800/40   flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center font-black text-white text-base shadow-lg shadow-indigo-500/10">
+          <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center font-black text-black text-base shadow-lg shadow-indigo-500/10">
             S
           </div>
           <div>
@@ -93,11 +93,11 @@ function AppContent() {
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all duration-150 cursor-pointer ${
                   isActive 
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/15 font-bold' 
+                    ? 'bg-indigo-600 text-black shadow-md shadow-indigo-500/15 font-bold' 
                     : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
                 }`}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-400'}`} />
+                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-black' : 'text-slate-500 group-hover:text-slate-400'}`} />
                 <span>{item.label}</span>
               </button>
             );
@@ -139,7 +139,7 @@ function AppContent() {
       {/* 2. MOBILE TOP-BAR & HAMBURGER */}
       <header className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between border-b border-slate-950 select-none print:hidden">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-white text-sm">
+          <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-black text-sm">
             S
           </div>
           <span className="font-extrabold text-xs uppercase tracking-tight">Supplierku</span>
@@ -182,11 +182,11 @@ function AppContent() {
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold ${
                     isActive 
-                      ? 'bg-indigo-600 text-white font-bold' 
+                      ? 'bg-indigo-600 text-black font-bold' 
                       : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/40'
                   }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-black' : ''}`} />
                   <span>{item.label}</span>
                 </button>
               );

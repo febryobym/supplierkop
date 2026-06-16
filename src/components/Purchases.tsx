@@ -825,9 +825,9 @@ export default function Purchases() {
                 {/* To: Purchasing Company Entity */}
                 <div className="space-y-1">
                   <div className="font-semibold text-gray-400 text-[10px] uppercase tracking-wider block">Entitas Pembeli</div>
-                  <div className="font-bold text-gray-900 text-sm">Gudang Penyimpanan Pusat</div>
+                  <div className="font-bold text-gray-900 text-sm">Koperasi Garuda Merah Putih</div>
                   <p className="text-gray-500 leading-relaxed max-w-[240px]">
-                    Kawasan Niaga Terpadu, Jl. Sudirman Kav 12, DKI Jakarta, Indonesia
+                    Dsn. Padangan RT 02 RW 03 Ds. Pagu Kec. Pagu Kab. Kediri
                   </p>
                 </div>
 

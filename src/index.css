@@ -1,1 +1,19 @@
 @import "tailwindcss";
+
+@theme {
+  --color-slate-950: #011e4d;
+  --color-slate-900: #011e4d;
+  --color-indigo-50: #f0fafc;
+  --color-indigo-600: #b4e0e8;
+  --color-indigo-700: #92cbd6;
+}
+
+/* Force dark font/icon color when elements use #B4E0E8 or similar light blue under bg-indigo-600/700 */
+[class*="bg-indigo-600"], [class*="bg-indigo-700"] {
+  color: #000000 !important;
+}
+
+[class*="bg-indigo-600"] svg, [class*="bg-indigo-700"] svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
