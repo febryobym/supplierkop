@@ -36,6 +36,7 @@ interface StateContextType {
   addPurchase: (purchase: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>) => void;
   deletePurchase: (id: string) => boolean;
   addPayment: (payment: Omit<Payment, 'id' | 'createdAt' | 'receivedBy'>) => void;
+  updatePayment: (id: string, payment: Omit<Payment, 'id' | 'createdAt' | 'receivedBy'>) => void;
   deletePayment: (id: string) => void;
   addUser: (user: Omit<User, 'id'>) => boolean;
   updateUser: (user: User) => void;
@@ -622,6 +623,130 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const updatePayment = async (paymentId: string, updatedData: Omit<Payment, 'id' | 'createdAt' | 'receivedBy'>) => {
+    const oldPayment = payments.find((p) => p.id === paymentId);
+    if (!oldPayment) return;
+
+    const oldPurchase = purchases.find((p) => p.id === oldPayment.purchaseId);
+    const newPurchase = purchases.find((p) => p.id === updatedData.purchaseId);
+
+    if (!oldPurchase || !newPurchase) return;
+
+    const isSamePurchase = oldPayment.purchaseId === updatedData.purchaseId;
+
+    const updatedPayment: Payment = {
+      ...oldPayment,
+      ...updatedData,
+    };
+
+    if (isOfflineFallback) {
+      setPayments((prev) => prev.map((p) => (p.id === paymentId ? updatedPayment : p)));
+
+      if (isSamePurchase) {
+        setPurchases((prev) =>
+          prev.map((p) => {
+            if (p.id === oldPurchase.id) {
+              const newPaid = Math.max(0, p.paidAmount - oldPayment.amount + updatedData.amount);
+              const newRemaining = Math.max(0, p.total - newPaid);
+              let newStatus: PurchaseStatus = 'Belum Lunas';
+              if (newPaid >= p.total) {
+                newStatus = 'Lunas';
+              } else if (newPaid > 0) {
+                newStatus = 'Sebagian';
+              }
+              return { ...p, paidAmount: newPaid, remainingAmount: newRemaining, status: newStatus };
+            }
+            return p;
+          })
+        );
+      } else {
+        setPurchases((prev) =>
+          prev.map((p) => {
+            if (p.id === oldPurchase.id) {
+              const newPaid = Math.max(0, p.paidAmount - oldPayment.amount);
+              const newRemaining = Math.max(0, p.total - newPaid);
+              let newStatus: PurchaseStatus = 'Belum Lunas';
+              if (newPaid >= p.total) {
+                newStatus = 'Lunas';
+              } else if (newPaid > 0) {
+                newStatus = 'Sebagian';
+              }
+              return { ...p, paidAmount: newPaid, remainingAmount: newRemaining, status: newStatus };
+            }
+            if (p.id === newPurchase.id) {
+              const newPaid = p.paidAmount + updatedData.amount;
+              const newRemaining = Math.max(0, p.total - newPaid);
+              let newStatus: PurchaseStatus = 'Belum Lunas';
+              if (newPaid >= p.total) {
+                newStatus = 'Lunas';
+              } else if (newPaid > 0) {
+                newStatus = 'Sebagian';
+              }
+              return { ...p, paidAmount: newPaid, remainingAmount: newRemaining, status: newStatus };
+            }
+            return p;
+          })
+        );
+      }
+
+      await addSystemLog('EDIT_BAYAR', `Edit pembayaran Rp ${updatedData.amount.toLocaleString('id-ID')} pada ref ${updatedData.referenceNumber || 'N/A'}`);
+    } else {
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'payments', paymentId), updatedPayment);
+
+      if (isSamePurchase) {
+        const newPaid = Math.max(0, oldPurchase.paidAmount - oldPayment.amount + updatedData.amount);
+        const newRemaining = Math.max(0, oldPurchase.total - newPaid);
+        let newStatus: PurchaseStatus = 'Belum Lunas';
+        if (newPaid >= oldPurchase.total) {
+          newStatus = 'Lunas';
+        } else if (newPaid > 0) {
+          newStatus = 'Sebagian';
+        }
+        batch.update(doc(db, 'purchases', oldPurchase.id), {
+          paidAmount: newPaid,
+          remainingAmount: newRemaining,
+          status: newStatus
+        });
+      } else {
+        const newPaidOld = Math.max(0, oldPurchase.paidAmount - oldPayment.amount);
+        const newRemainingOld = Math.max(0, oldPurchase.total - newPaidOld);
+        let newStatusOld: PurchaseStatus = 'Belum Lunas';
+        if (newPaidOld >= oldPurchase.total) {
+          newStatusOld = 'Lunas';
+        } else if (newPaidOld > 0) {
+          newStatusOld = 'Sebagian';
+        }
+        batch.update(doc(db, 'purchases', oldPurchase.id), {
+          paidAmount: newPaidOld,
+          remainingAmount: newRemainingOld,
+          status: newStatusOld
+        });
+
+        const newPaidNew = newPurchase.paidAmount + updatedData.amount;
+        const newRemainingNew = Math.max(0, newPurchase.total - newPaidNew);
+        let newStatusNew: PurchaseStatus = 'Belum Lunas';
+        if (newPaidNew >= newPurchase.total) {
+          newStatusNew = 'Lunas';
+        } else if (newPaidNew > 0) {
+          newStatusNew = 'Sebagian';
+        }
+        batch.update(doc(db, 'purchases', newPurchase.id), {
+          paidAmount: newPaidNew,
+          remainingAmount: newRemainingNew,
+          status: newStatusNew
+        });
+      }
+
+      try {
+        await batch.commit();
+        await addSystemLog('EDIT_BAYAR', `Edit pembayaran Rp ${updatedData.amount.toLocaleString('id-ID')} pada ref ${updatedData.referenceNumber || 'N/A'}`);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.WRITE, `payments_and_purchases_edit_batch`);
+      }
+    }
+  };
+
   // User Management
   const addUser = (userData: Omit<User, 'id'>): boolean => {
     const exists = users.some((u) => u.username.toLowerCase() === userData.username.toLowerCase());
@@ -753,6 +878,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addPurchase,
         deletePurchase,
         addPayment,
+        updatePayment,
         deletePayment,
         addUser,
         updateUser,
