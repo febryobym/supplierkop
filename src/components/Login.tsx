@@ -37,10 +37,13 @@ export default function Login() {
     }
   };
 
-  const handleSelectProfile = (name: string, email: string, passwordText: string) => {
+  const handleSelectProfile = (name: string, email: string) => {
     setTypedEmail(email);
-    setTypedPassword(passwordText); // Auto-fill password directly for seamless demo testing
+    setTypedPassword(''); // Password must be entered manually
     setErrorText('');
+    setTimeout(() => {
+      passwordInputRef.current?.focus();
+    }, 50);
   };
 
   return (
@@ -144,7 +147,7 @@ export default function Login() {
                 <button
                   type="button"
                   key={u.id}
-                  onClick={() => handleSelectProfile(u.name, u.email, u.password || 'password')}
+                  onClick={() => handleSelectProfile(u.name, u.email)}
                   className="w-full text-left p-2.5 border border-gray-100 rounded-2xl hover:border-indigo-500 hover:bg-slate-50/40 transition-all flex items-center justify-between gap-3 group cursor-pointer"
                 >
                   <div className="space-y-0.5">
