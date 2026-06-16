@@ -130,7 +130,7 @@ export default function Login() {
         <div className="space-y-3 pt-4 border-t border-gray-100">
           <div className="flex items-center gap-1.5">
             <Users className="w-4 h-4 text-indigo-500 shrink-0" />
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-sans">Pilih Profil Penguji Demo</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider font-sans">PILIH PROFIL</span>
           </div>
           
           <div className="grid grid-cols-1 gap-2 max-h-[170px] overflow-y-auto pr-1">
