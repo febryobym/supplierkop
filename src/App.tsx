@@ -70,12 +70,15 @@ function AppContent() {
       <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-950 text-slate-100 shrink-0 select-none">
         {/* Brand Banner */}
         <div className="p-6 border-b border-slate-800/40   flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center font-black text-black text-base shadow-lg shadow-indigo-500/10">
-            S
-          </div>
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/9/90/National_emblem_of_Indonesia_Garuda_Pancasila.svg" 
+            alt="Logo Garuda Pancasila"
+            referrerPolicy="no-referrer"
+            className="w-10 h-10 object-contain shrink-0"
+          />
           <div>
-            <h2 className="text-sm font-extrabold tracking-tight uppercase">Supplierku ERP</h2>
-            <p className="text-[10px] text-slate-400 font-mono">Buku Pembelian & Kas</p>
+            <h2 className="text-xs font-bold tracking-tight uppercase leading-snug">Koperasi GMP</h2>
+            <p className="text-[9px] text-slate-400 font-mono">Buku Pembelian & Kas</p>
           </div>
         </div>
 
@@ -139,10 +142,13 @@ function AppContent() {
       {/* 2. MOBILE TOP-BAR & HAMBURGER */}
       <header className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between border-b border-slate-950 select-none print:hidden">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-black text-sm">
-            S
-          </div>
-          <span className="font-extrabold text-xs uppercase tracking-tight">Supplierku</span>
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/9/90/National_emblem_of_Indonesia_Garuda_Pancasila.svg" 
+            alt="Logo Garuda Pancasila"
+            referrerPolicy="no-referrer"
+            className="w-7 h-7 object-contain shrink-0"
+          />
+          <span className="font-extrabold text-xs uppercase tracking-tight">Koperasi GMP</span>
         </div>
 
         <div className="flex items-center gap-3">
