@@ -177,7 +177,7 @@ export default function UserManagement() {
           <ul className="list-disc pl-4 space-y-1 text-amber-700 text-[10px] leading-relaxed">
             <li><strong>Admin</strong>: Kontrol mutak (CRUD Suppliers, Purchases, Payments, Kredensial, Reset Sistem).</li>
             <li><strong>Manager</strong>: Menyunting & menyetujui transaksi (Ubah Supplier, Tambah Pembelian/Bayar, Lihat Log Audit). Tidak bisa hapus user.</li>
-            <li><strong>Staff</strong>: Hanya input pembelian (Nota) dan pelunasan bayar tunai dasar. Dilarang mendelete dan dilarang menginspeksi Manajemen User.</li>
+            <li><strong>Staff</strong>: Hanya input pembelian (Nota) dan tidak bisa melakukan pelunasan bayar tunai dasar. Dilarang mendelete dan dilarang menginspeksi Manajemen User.</li>
           </ul>
         </div>
       </div>

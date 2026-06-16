@@ -46,6 +46,10 @@ export default function Payments() {
   });
 
   const handleOpenForm = () => {
+    if (currentUser?.role === 'Staff') {
+      alert('Akses Ditolak: Peran Staff tidak diperbolehkan melakukan pelunasan / pembayaran.');
+      return;
+    }
     const available = purchases.filter(p => p.status !== 'Lunas');
     if (available.length === 0) {
       alert('Tidak ada tagihan atau hutang faktur aktif yang membutuhkan pelunasan saat ini.');
@@ -93,6 +97,11 @@ export default function Payments() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (currentUser?.role === 'Staff') {
+      setErrorMessage('Akses Ditolak: Peran Staff tidak diperbolehkan melakukan pelunasan / pembayaran.');
+      return;
+    }
 
     if (!formPurchaseId) {
       setErrorMessage('Harap pilih faktur pembelian!');
@@ -209,13 +218,15 @@ export default function Payments() {
             <span>Ekspor Excel (.CSV)</span>
           </button>
           
-          <button
-            onClick={handleOpenForm}
-            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-xs hover:shadow-md cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Lakukan Pembayaran</span>
-          </button>
+          {currentUser?.role !== 'Staff' && (
+            <button
+              onClick={handleOpenForm}
+              className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-xs hover:shadow-md cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Lakukan Pembayaran</span>
+            </button>
+          )}
         </div>
       </div>
 
