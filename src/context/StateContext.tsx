@@ -34,6 +34,7 @@ interface StateContextType {
   updateSupplier: (supplier: Supplier) => void;
   deleteSupplier: (id: string) => boolean;
   addPurchase: (purchase: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>) => void;
+  updatePurchase: (id: string, purchase: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>) => void;
   deletePurchase: (id: string) => boolean;
   addPayment: (payment: Omit<Payment, 'id' | 'createdAt' | 'receivedBy'>) => void;
   updatePayment: (id: string, payment: Omit<Payment, 'id' | 'createdAt' | 'receivedBy'>) => void;
@@ -507,6 +508,37 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const updatePurchase = async (id: string, purchaseData: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>) => {
+    const existing = purchases.find((p) => p.id === id);
+    if (!existing) return;
+
+    // Check if it already has payments (for extra security)
+    const hasPayments = payments.some((pay) => pay.purchaseId === id) || existing.paidAmount > 0;
+    if (hasPayments) {
+      alert("Pembelian ini tidak dapat diubah karena sudah ada pembayaran yang tercatat!");
+      return;
+    }
+
+    const updatedPurchase: Purchase = {
+      ...existing,
+      ...purchaseData,
+      remainingAmount: purchaseData.total, // Since paidAmount is 0, sisa is total
+      status: 'Belum Lunas'
+    };
+
+    if (isOfflineFallback) {
+      setPurchases((prev) => prev.map((p) => (p.id === id ? updatedPurchase : p)));
+      await addSystemLog('EDIT_PEMBELIAN', `Invoice ${updatedPurchase.invoiceNumber}`);
+    } else {
+      try {
+        await setDoc(doc(db, 'purchases', id), updatedPurchase);
+        await addSystemLog('EDIT_PEMBELIAN', `Invoice ${updatedPurchase.invoiceNumber}`);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.WRITE, `purchases/${id}`);
+      }
+    }
+  };
+
   const deletePurchase = (id: string): boolean => {
     const hasPayments = payments.some((pay) => pay.purchaseId === id);
     if (hasPayments) return false;
@@ -876,6 +908,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateSupplier,
         deleteSupplier,
         addPurchase,
+        updatePurchase,
         deletePurchase,
         addPayment,
         updatePayment,

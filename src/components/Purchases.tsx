@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { useAppState } from '../context/StateContext';
 import { Purchase, PurchaseItem, PurchaseStatus } from '../types';
 import { formatRupiah, formatDate, exportToCSV } from '../data';
-import { Plus, Search, Eye, Trash2, Calendar, FileText, ShoppingCart, Percent, DollarSign, X, CheckCircle, Clock, AlertTriangle, FileSpreadsheet, Printer } from 'lucide-react';
+import { Plus, Search, Eye, Trash2, Calendar, FileText, ShoppingCart, Percent, DollarSign, X, CheckCircle, Clock, AlertTriangle, FileSpreadsheet, Printer, Edit } from 'lucide-react';
 
 interface FormLineItem {
   itemName: string;
@@ -18,7 +18,7 @@ interface FormLineItem {
 }
 
 export default function Purchases() {
-  const { purchases, suppliers, addPurchase, deletePurchase, currentUser } = useAppState();
+  const { purchases, suppliers, addPurchase, updatePurchase, deletePurchase, currentUser } = useAppState();
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,11 +47,14 @@ export default function Purchases() {
   // Invoice Detail Viewer State
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
 
+  const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
+
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
   // Access check
   const canDelete = currentUser?.role !== 'Staff';
+  const canEdit = currentUser?.role !== 'Staff';
 
   // Calculations for active form
   const formSubTotal = lineItems.reduce((acc, item) => {
@@ -66,6 +69,7 @@ export default function Purchases() {
       alert('Harap daftarkan supplier terlebih dahulu di tab Supplier sebelum menginput transaksi pembelian.');
       return;
     }
+    setEditingPurchaseId(null);
     setFormSupplierId(suppliers[0].id);
     setFormInvoiceNumber(`INV/${new Date().getFullYear()}/${(new Date().getMonth() + 1).toString().padStart(2, '0')}/0${purchases.length + 101}`);
     setFormPurchaseDate(new Date().toISOString().split('T')[0]);
@@ -78,6 +82,28 @@ export default function Purchases() {
     setFormTaxPercent(11);
     setFormDiscount(0);
     setLineItems([{ itemName: '', quantity: '1', unit: 'Pcs', price: 0, total: 0 }]);
+    setErrorMessage('');
+    setIsFormOpen(true);
+  };
+
+  const handleOpenEditForm = (p: Purchase) => {
+    setEditingPurchaseId(p.id);
+    setFormSupplierId(p.supplierId);
+    setFormInvoiceNumber(p.invoiceNumber);
+    setFormPurchaseDate(p.purchaseDate);
+    setFormDueDate(p.dueDate);
+    setFormNotes(p.notes || '');
+    setFormTaxPercent(p.tax);
+    setFormDiscount(p.discount);
+    
+    const mappedItems = p.items.map(item => ({
+      itemName: item.itemName,
+      quantity: String(item.quantity),
+      unit: item.unit,
+      price: item.price,
+      total: item.total
+    }));
+    setLineItems(mappedItems);
     setErrorMessage('');
     setIsFormOpen(true);
   };
@@ -110,7 +136,7 @@ export default function Purchases() {
     setLineItems(updated);
   };
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formInvoiceNumber || !formSupplierId || !formPurchaseDate || !formDueDate) {
@@ -140,8 +166,7 @@ export default function Purchases() {
       };
     });
 
-    // Trigger action in StateContext
-    addPurchase({
+    const purchasePayload = {
       supplierId: formSupplierId,
       invoiceNumber: formInvoiceNumber,
       purchaseDate: formPurchaseDate,
@@ -153,10 +178,25 @@ export default function Purchases() {
       discount: formDiscount,
       total: formTotal,
       notes: formNotes
-    });
+    };
 
-    setSuccessMessage('Sukses menerbitkan faktur pembelian barang!');
+    if (editingPurchaseId) {
+      // Backend safety check:
+      const existing = purchases.find(p => p.id === editingPurchaseId);
+      if (existing && (existing.paidAmount > 0 || existing.status !== 'Belum Lunas')) {
+        alert('Tidak bisa mengubah pembelian yang sudah mulai diangsur atau dilunasi!');
+        return;
+      }
+      updatePurchase(editingPurchaseId, purchasePayload);
+      setSuccessMessage('Sukses memperbarui faktur pembelian barang!');
+    } else {
+      // Trigger action in StateContext
+      addPurchase(purchasePayload);
+      setSuccessMessage('Sukses menerbitkan faktur pembelian barang!');
+    }
+
     setIsFormOpen(false);
+    setEditingPurchaseId(null);
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
@@ -371,7 +411,7 @@ export default function Purchases() {
                         </span>
                       </td>
 
-                      {/* Quick Inspect View & delete */}
+                      {/* Quick Inspect View, edit, & delete */}
                       <td className="p-4 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <button
@@ -381,6 +421,30 @@ export default function Purchases() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => {
+                                if (p.paidAmount > 0 || p.status !== 'Belum Lunas') {
+                                  alert('Transaksi pembelian ini tidak dapat diubah karena sudah ada pembayaran yang berjalan atau lunas!');
+                                  return;
+                                }
+                                handleOpenEditForm(p);
+                              }}
+                              disabled={p.paidAmount > 0 || p.status !== 'Belum Lunas'}
+                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                p.paidAmount > 0 || p.status !== 'Belum Lunas'
+                                  ? 'bg-gray-100/50 text-gray-300 cursor-not-allowed'
+                                  : 'bg-gray-50 text-gray-400 hover:bg-amber-50 hover:text-amber-600'
+                              }`}
+                              title={
+                                p.paidAmount > 0 || p.status !== 'Belum Lunas'
+                                  ? 'Tidak dapat diubah karena sudah ada pelunasan kas'
+                                  : 'Ubah / Edit Faktur Pembelian'
+                              }
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
                           {canDelete && (
                             <button
                               onClick={() => handleDeletePurchase(p.id)}
@@ -409,16 +473,26 @@ export default function Purchases() {
             
             <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
               <div>
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Input Transaksi Pembelian Barang</h3>
-                <p className="text-xs text-gray-500 font-sans">Buat faktur utang baru dari supplier.</p>
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+                  {editingPurchaseId ? 'Koreksi / Edit Transaksi Pembelian Barang' : 'Input Transaksi Pembelian Barang'}
+                </h3>
+                <p className="text-xs text-gray-500 font-sans">
+                  {editingPurchaseId ? 'Sesuaikan data transaksi atau rincian item belanjaan Mitra Supplier.' : 'Buat faktur utang baru dari supplier.'}
+                </p>
               </div>
-              <button onClick={() => setIsFormOpen(false)} className="p-1.5 hover:bg-gray-150 rounded-lg cursor-pointer">
+              <button 
+                onClick={() => {
+                  setIsFormOpen(false);
+                  setEditingPurchaseId(null);
+                }} 
+                className="p-1.5 hover:bg-gray-150 rounded-lg cursor-pointer"
+              >
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
 
             {/* Scroll form area */}
-            <form onSubmit={handleCreateSubmit} className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+            <form onSubmit={handleFormSubmit} className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
               {errorMessage && (
                 <div className="bg-rose-50 border border-rose-100 text-rose-800 p-3 rounded-xl">
                   {errorMessage}
@@ -666,7 +740,10 @@ export default function Purchases() {
               <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={() => setIsFormOpen(false)}
+                  onClick={() => {
+                    setIsFormOpen(false);
+                    setEditingPurchaseId(null);
+                  }}
                   className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl cursor-pointer"
                 >
                   Batal
@@ -675,7 +752,7 @@ export default function Purchases() {
                   type="submit"
                   className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-md cursor-pointer"
                 >
-                  Tandatangani & Simpan Faktur
+                  {editingPurchaseId ? 'Simpan Perubahan' : 'Tandatangani & Simpan Faktur'}
                 </button>
               </div>
 
