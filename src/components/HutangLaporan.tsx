@@ -25,7 +25,7 @@ export default function HutangLaporan() {
   let agingOverdue3 = 0; // Overdue > 60 days
 
   purchases.forEach(p => {
-    if (p.status !== 'Lunas') {
+    if (p.status !== 'Lunas' || p.remainingAmount < 0) {
       const dueDate = new Date(p.dueDate);
       const diffTime = today.getTime() - dueDate.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 3600 * 24)); // positive means overdue!
@@ -50,7 +50,7 @@ export default function HutangLaporan() {
     const totalPurchased = sPurchases.reduce((acc, p) => acc + p.total, 0);
     const totalPaid = sPurchases.reduce((acc, p) => acc + p.paidAmount, 0);
     const remainingHutang = sPurchases.reduce((acc, p) => acc + p.remainingAmount, 0);
-    const activeInvoicesCount = sPurchases.filter(p => p.status !== 'Lunas').length;
+    const activeInvoicesCount = sPurchases.filter(p => p.status !== 'Lunas' || p.remainingAmount < 0).length;
 
     return {
       supplier: s,
@@ -59,7 +59,7 @@ export default function HutangLaporan() {
       remainingHutang,
       activeInvoicesCount
     };
-  }).filter(entry => entry.remainingHutang > 0 || searchQuery === ''); // Show all or filter if searched
+  }).filter(entry => entry.remainingHutang !== 0 || searchQuery === ''); // Show all or filter if searched
 
   // Filter based on search query
   const filteredSummary = supplierHutangSummary.filter(entry => 
@@ -69,7 +69,7 @@ export default function HutangLaporan() {
 
   // 3. Drill-down target purchases listing
   const activeDetailPurchases = selectedSupplierId 
-    ? purchases.filter(p => p.supplierId === selectedSupplierId && p.status !== 'Lunas')
+    ? purchases.filter(p => p.supplierId === selectedSupplierId && (p.status !== 'Lunas' || p.remainingAmount < 0))
     : [];
 
   const drilldownSupplierName = selectedSupplierId
@@ -301,7 +301,7 @@ export default function HutangLaporan() {
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-gray-100">
-                                    {purchases.filter(p => p.supplierId === entry.supplier.id && p.status !== 'Lunas').map(p => {
+                                    {purchases.filter(p => p.supplierId === entry.supplier.id && (p.status !== 'Lunas' || p.remainingAmount < 0)).map(p => {
                                       const daysLeft = Math.ceil((new Date(p.dueDate).getTime() - today.getTime()) / (1000 * 3600 * 24));
                                       return (
                                         <tr key={p.id} className="hover:bg-gray-50/40">
@@ -324,9 +324,15 @@ export default function HutangLaporan() {
                                           
                                           {/* Status label */}
                                           <td className="p-2.5 text-center">
-                                            <span className="inline-block px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold text-[10px]">
-                                              {p.status}
-                                            </span>
+                                            {p.remainingAmount < 0 ? (
+                                              <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[10px]">
+                                                {p.status} (Lebih)
+                                              </span>
+                                            ) : (
+                                              <span className="inline-block px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold text-[10px]">
+                                                {p.status}
+                                              </span>
+                                            )}
                                           </td>
 
                                         </tr>
