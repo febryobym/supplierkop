@@ -248,7 +248,7 @@ export default function HutangLaporan() {
                         <td className="p-3 text-right font-mono text-emerald-600">{formatRupiah(entry.totalPaid)}</td>
                         
                         {/* Sisa Hutang Aktif */}
-                        <td className="p-3 text-right font-mono font-bold text-rose-600 bg-rose-50/10 text-[12px]">
+                        <td className={`p-3 text-right font-mono font-bold text-[12px] ${entry.remainingHutang > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                           {formatRupiah(entry.remainingHutang)}
                         </td>
 
@@ -320,7 +320,7 @@ export default function HutangLaporan() {
 
                                           <td className="p-2.5 text-right font-mono">{formatRupiah(p.total)}</td>
                                           <td className="p-2.5 text-right font-mono text-emerald-600">{formatRupiah(p.paidAmount)}</td>
-                                          <td className="p-2.5 text-right font-mono text-rose-600 font-bold">{formatRupiah(p.remainingAmount)}</td>
+                                          <td className={`p-2.5 text-right font-mono font-bold ${p.remainingAmount > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatRupiah(p.remainingAmount)}</td>
                                           
                                           {/* Status label */}
                                           <td className="p-2.5 text-center">

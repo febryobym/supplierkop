@@ -127,11 +127,6 @@ export default function Payments() {
       }
     }
 
-    if (formAmount > maxAllowed) {
-      setErrorMessage(`Jumlah pelunasan melebihi sisa hutang aktif (${formatRupiah(maxAllowed)})!`);
-      return;
-    }
-
     if (editingPaymentId) {
       updatePayment(editingPaymentId, {
         purchaseId: formPurchaseId,
@@ -454,9 +449,9 @@ export default function Payments() {
 
                 const activePayment = editingPaymentId ? payments.find(pay => pay.id === editingPaymentId) : null;
                 const totalPaidExceptThis = activePayment && activePayment.purchaseId === currentPurch.id
-                  ? Math.max(0, currentPurch.paidAmount - activePayment.amount)
+                  ? currentPurch.paidAmount - activePayment.amount
                   : currentPurch.paidAmount;
-                const remainingBeforeThis = Math.max(0, currentPurch.total - totalPaidExceptThis);
+                const remainingBeforeThis = currentPurch.total - totalPaidExceptThis;
 
                 return (
                   <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 space-y-2 block text-indigo-950 font-sans">

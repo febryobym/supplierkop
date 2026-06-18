@@ -575,7 +575,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!purchase) return;
 
     const newPaid = purchase.paidAmount + paymentData.amount;
-    const newRemaining = Math.max(0, purchase.total - newPaid);
+    const newRemaining = purchase.total - newPaid;
     let newStatus: PurchaseStatus = 'Belum Lunas';
     if (newPaid >= purchase.total) {
       newStatus = 'Lunas';
@@ -679,7 +679,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           prev.map((p) => {
             if (p.id === oldPurchase.id) {
               const newPaid = Math.max(0, p.paidAmount - oldPayment.amount + updatedData.amount);
-              const newRemaining = Math.max(0, p.total - newPaid);
+              const newRemaining = p.total - newPaid;
               let newStatus: PurchaseStatus = 'Belum Lunas';
               if (newPaid >= p.total) {
                 newStatus = 'Lunas';
@@ -696,7 +696,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           prev.map((p) => {
             if (p.id === oldPurchase.id) {
               const newPaid = Math.max(0, p.paidAmount - oldPayment.amount);
-              const newRemaining = Math.max(0, p.total - newPaid);
+              const newRemaining = p.total - newPaid;
               let newStatus: PurchaseStatus = 'Belum Lunas';
               if (newPaid >= p.total) {
                 newStatus = 'Lunas';
@@ -707,7 +707,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
             if (p.id === newPurchase.id) {
               const newPaid = p.paidAmount + updatedData.amount;
-              const newRemaining = Math.max(0, p.total - newPaid);
+              const newRemaining = p.total - newPaid;
               let newStatus: PurchaseStatus = 'Belum Lunas';
               if (newPaid >= p.total) {
                 newStatus = 'Lunas';
@@ -728,7 +728,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (isSamePurchase) {
         const newPaid = Math.max(0, oldPurchase.paidAmount - oldPayment.amount + updatedData.amount);
-        const newRemaining = Math.max(0, oldPurchase.total - newPaid);
+        const newRemaining = oldPurchase.total - newPaid;
         let newStatus: PurchaseStatus = 'Belum Lunas';
         if (newPaid >= oldPurchase.total) {
           newStatus = 'Lunas';
@@ -742,7 +742,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
       } else {
         const newPaidOld = Math.max(0, oldPurchase.paidAmount - oldPayment.amount);
-        const newRemainingOld = Math.max(0, oldPurchase.total - newPaidOld);
+        const newRemainingOld = oldPurchase.total - newPaidOld;
         let newStatusOld: PurchaseStatus = 'Belum Lunas';
         if (newPaidOld >= oldPurchase.total) {
           newStatusOld = 'Lunas';
@@ -756,7 +756,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
 
         const newPaidNew = newPurchase.paidAmount + updatedData.amount;
-        const newRemainingNew = Math.max(0, newPurchase.total - newPaidNew);
+        const newRemainingNew = newPurchase.total - newPaidNew;
         let newStatusNew: PurchaseStatus = 'Belum Lunas';
         if (newPaidNew >= newPurchase.total) {
           newStatusNew = 'Lunas';
