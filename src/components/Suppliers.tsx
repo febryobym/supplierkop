@@ -37,9 +37,9 @@ export default function Suppliers() {
 
   // Access check
   const isReadOnly = currentUser?.role === 'Staff';
+  const canAddSupplier = true; // Staff is allowed to add supplier
 
   const handleOpenCreate = () => {
-    if (isReadOnly) return;
     setEditingSupplier(null);
     setFormData({
       name: '',
@@ -76,7 +76,10 @@ export default function Suppliers() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isReadOnly) return;
+    if (editingSupplier && isReadOnly) {
+      setErrorMessage('Akses Ditolak: Peran Staff tidak diijinkan menyunting detail supplier.');
+      return;
+    }
 
     if (!formData.name || !formData.code || !formData.contactPerson || !formData.phone) {
       setErrorMessage('Harap isi semua kolom wajib (Nama, Kode, CP, dan Telepon)');
@@ -156,7 +159,7 @@ export default function Suppliers() {
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             <span>Ekspor Excel (.CSV)</span>
           </button>
-          {!isReadOnly && (
+          {canAddSupplier && (
             <button
               onClick={handleOpenCreate}
               className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-xs hover:shadow-md cursor-pointer"

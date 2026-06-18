@@ -54,7 +54,7 @@ export default function Purchases() {
 
   // Access check
   const canDelete = currentUser?.role !== 'Staff';
-  const canEdit = currentUser?.role !== 'Staff';
+  const canEdit = true;
 
   // Calculations for active form
   const formSubTotal = lineItems.reduce((acc, item) => {
