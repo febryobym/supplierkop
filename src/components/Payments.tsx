@@ -456,9 +456,14 @@ export default function Payments() {
                 return (
                   <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 space-y-2 block text-indigo-950 font-sans">
                     <span className="text-[9px] uppercase tracking-widest font-bold block text-indigo-500">Informasi Rujukan Supplier</span>
-                    <div className="flex justify-between font-bold">
+                    <div className="flex justify-between items-start font-bold">
                       <span>{s?.name} ({s?.code})</span>
-                      <span className="font-mono text-indigo-700">{currentPurch.invoiceNumber}</span>
+                      <div className="text-right">
+                        <span className="font-mono text-indigo-700 block">{currentPurch.invoiceNumber}</span>
+                        <span className="text-[10px] text-gray-500 font-normal block font-sans">
+                          Tgl Transaksi: {formatDate(currentPurch.purchaseDate)}
+                        </span>
+                      </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-[11px] pt-1 border-t border-indigo-100/40 font-mono">
                       <div>
