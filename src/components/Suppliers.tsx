@@ -36,7 +36,7 @@ export default function Suppliers() {
   const [successMessage, setSuccessMessage] = useState('');
 
   // Access check
-  const isReadOnly = currentUser?.role === 'Staff';
+  const isReadOnly = false; // Staff now has full edit and delete access to suppliers
   const canAddSupplier = true; // Staff is allowed to add supplier
 
   const handleOpenCreate = () => {
