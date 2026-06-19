@@ -463,8 +463,17 @@ export default function Payments() {
                     </div>
 
                     <div className="flex justify-between items-start font-bold">
-                      <div className="space-y-0.5">
+                      <div className="space-y-1">
                         <span className="text-[13px] block">{s?.name} ({s?.code})</span>
+                        {s?.bankAccount ? (
+                          <div className="text-[11px] text-indigo-800 font-mono flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1 bg-white/80 border border-indigo-100/60 px-2.5 py-1 rounded-lg w-max shadow-2xs font-normal">
+                            <span className="font-sans font-bold text-[9px] uppercase tracking-wider text-indigo-500 bg-indigo-100/45 px-1 py-0.5 rounded">Rekening:</span>
+                            <span className="font-bold">{s.bankName} - {s.bankAccount}</span>
+                            <span className="text-[10px] text-indigo-600/80 font-normal font-sans">(a.n. {s.bankAccountHolder})</span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-amber-600 font-medium italic block mt-1">💡 No Rekening: Belum diatur di Database Supplier</span>
+                        )}
                         {currentPurch.notes && (
                           <span className="text-[10px] text-indigo-600/80 font-normal italic block">
                             Catatan: {currentPurch.notes}
