@@ -454,30 +454,79 @@ export default function Payments() {
                 const remainingBeforeThis = currentPurch.total - totalPaidExceptThis;
 
                 return (
-                  <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 space-y-2 block text-indigo-950 font-sans">
-                    <span className="text-[9px] uppercase tracking-widest font-bold block text-indigo-500">Informasi Rujukan Supplier</span>
+                  <div className="bg-indigo-50/55 border border-indigo-100 rounded-2xl p-4 space-y-3 block text-indigo-950 font-sans shadow-xs">
+                    <div className="flex justify-between items-center pb-2 border-b border-indigo-100/40">
+                      <span className="text-[10px] uppercase tracking-widest font-bold text-indigo-500">Informasi Rujukan Supplier</span>
+                      <span className="inline-block px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[9px] font-bold">
+                        {currentPurch.status}
+                      </span>
+                    </div>
+
                     <div className="flex justify-between items-start font-bold">
-                      <span>{s?.name} ({s?.code})</span>
+                      <div className="space-y-0.5">
+                        <span className="text-[13px] block">{s?.name} ({s?.code})</span>
+                        {currentPurch.notes && (
+                          <span className="text-[10px] text-indigo-600/80 font-normal italic block">
+                            Catatan: {currentPurch.notes}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-right">
-                        <span className="font-mono text-indigo-700 block">{currentPurch.invoiceNumber}</span>
-                        <span className="text-[10px] text-gray-500 font-normal block font-sans">
+                        <span className="font-mono text-indigo-700 block text-xs">{currentPurch.invoiceNumber}</span>
+                        <span className="text-[10px] text-gray-500 font-normal block font-sans mt-0.5">
                           Tgl Transaksi: {formatDate(currentPurch.purchaseDate)}
                         </span>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-[11px] pt-1 border-t border-indigo-100/40 font-mono">
+
+                    {/* Compact Item Breakdown */}
+                    {currentPurch.items && currentPurch.items.length > 0 && (
+                      <div className="space-y-1 pt-1">
+                        <span className="text-[9px] uppercase tracking-wider font-bold text-indigo-400 block mb-1">Rincian Belanja Barang ({currentPurch.items.length})</span>
+                        <div className="bg-white/70 border border-indigo-100/30 rounded-xl overflow-hidden max-h-32 overflow-y-auto">
+                          <table className="w-full text-[10px] text-indigo-950">
+                            <thead>
+                              <tr className="bg-indigo-100/20 text-indigo-600 font-semibold border-b border-indigo-100/20">
+                                <th className="text-left px-2 py-1.5 font-medium">Nama Barang</th>
+                                <th className="text-center px-1 py-1.5 font-medium w-14">Qty</th>
+                                <th className="text-right px-1 py-1.5 font-medium w-20">Harga</th>
+                                <th className="text-right px-2 py-1.5 font-medium w-24">Subtotal</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-indigo-50/50">
+                              {currentPurch.items.map((item) => (
+                                <tr key={item.id} className="hover:bg-indigo-50/20 transition-colors">
+                                  <td className="px-2 py-1.5 font-medium text-gray-800">{item.itemName}</td>
+                                  <td className="px-1 py-1.5 text-center font-mono text-gray-500">
+                                    {item.quantity} {item.unit}
+                                  </td>
+                                  <td className="px-1 py-1.5 text-right font-mono text-gray-500">
+                                    {formatRupiah(item.price)}
+                                  </td>
+                                  <td className="px-2 py-1.5 text-right font-mono font-bold text-indigo-950">
+                                    {formatRupiah(item.total)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-3 gap-2 text-[11px] pt-2.5 border-t border-indigo-100/40 font-mono">
                       <div>
-                        <span className="text-[10px] block text-gray-400">Total Belanja</span>
-                        <strong>{formatRupiah(currentPurch.total)}</strong>
+                        <span className="text-[9px] block text-gray-400 font-sans font-semibold">Total Belanja</span>
+                        <strong className="text-indigo-900">{formatRupiah(currentPurch.total)}</strong>
                       </div>
                       <div>
-                        <span className="text-[10px] block text-gray-400">
+                        <span className="text-[9px] block text-gray-400 font-sans font-semibold">
                           {editingPaymentId ? 'Telah Diangsur Lainnya' : 'Tergolong Bayar'}
                         </span>
-                        <strong>{formatRupiah(totalPaidExceptThis)}</strong>
+                        <strong className="text-indigo-900">{formatRupiah(totalPaidExceptThis)}</strong>
                       </div>
                       <div>
-                        <span className="text-[10px] block text-gray-400">Sisa Maksimal</span>
+                        <span className="text-[9px] block text-gray-400 font-sans font-semibold">Sisa Maksimal</span>
                         <strong className="text-rose-600">{formatRupiah(remainingBeforeThis)}</strong>
                       </div>
                     </div>
