@@ -54,7 +54,14 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Authentication State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('sh_current_user');
-    return saved ? JSON.parse(saved) : PREDEFINED_USERS[0]; // Default Admin
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null; // Don't auto login as admin on a new web/tab
   });
 
   // Master lists preloaded from localStorage or defaults to eliminate visual flashing and empty layouts
