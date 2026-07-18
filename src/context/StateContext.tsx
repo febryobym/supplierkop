@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { User, Supplier, Purchase, Payment, ActivityLog, Notification, UserRole, PurchaseStatus } from '../types';
 import { INITIAL_SUPPLIERS, INITIAL_PURCHASES, INITIAL_PAYMENTS, INITIAL_LOGS, PREDEFINED_USERS } from '../data';
 import { 
@@ -51,6 +51,13 @@ interface StateContextType {
 const StateContext = createContext<StateContextType | undefined>(undefined);
 
 export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Sync state tracking to prevent offline/local-only data from being overwritten by online snapshot on first load
+  const hasSyncedUsers = useRef(false);
+  const hasSyncedSuppliers = useRef(false);
+  const hasSyncedPurchases = useRef(false);
+  const hasSyncedPayments = useRef(false);
+  const hasSyncedLogs = useRef(false);
+
   // Authentication State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('sh_current_user');
@@ -160,6 +167,13 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (!isOfflineFallback) return;
 
+    // Reset sync markers so that a subsequent reconnect can trigger sync again
+    hasSyncedUsers.current = false;
+    hasSyncedSuppliers.current = false;
+    hasSyncedPurchases.current = false;
+    hasSyncedPayments.current = false;
+    hasSyncedLogs.current = false;
+
     const savedUsers = localStorage.getItem('sh_users');
     setUsers(savedUsers ? JSON.parse(savedUsers) : PREDEFINED_USERS);
 
@@ -252,6 +266,33 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
       const list: User[] = [];
       snapshot.forEach((doc) => list.push(doc.data() as User));
+
+      // Local storage sync (one-time upon connecting to Firestore)
+      if (!hasSyncedUsers.current) {
+        hasSyncedUsers.current = true;
+        const savedRaw = localStorage.getItem('sh_users');
+        if (savedRaw) {
+          try {
+            const savedList = JSON.parse(savedRaw) as User[];
+            const missing = savedList.filter(localItem => !list.some(dbItem => dbItem.id === localItem.id));
+            if (missing.length > 0) {
+              console.log(`Found ${missing.length} offline-created users. Syncing to Firestore...`);
+              missing.forEach(async (u) => {
+                try {
+                  await setDoc(doc(db, 'users', u.id), u);
+                } catch (e) {
+                  console.error("Failed to sync offline user:", e);
+                }
+              });
+              setUsers([...list, ...missing]);
+              return;
+            }
+          } catch (e) {
+            console.error("Failed to parse saved users for sync:", e);
+          }
+        }
+      }
+
       if (list.length === 0) {
         // Safe lock: ensure at least default users exist so login is always accessible
         PREDEFINED_USERS.forEach(async (u) => {
@@ -272,6 +313,33 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const unsubSuppliers = onSnapshot(collection(db, 'suppliers'), (snapshot) => {
       const list: Supplier[] = [];
       snapshot.forEach((doc) => list.push(doc.data() as Supplier));
+
+      // Local storage sync (one-time upon connecting to Firestore)
+      if (!hasSyncedSuppliers.current) {
+        hasSyncedSuppliers.current = true;
+        const savedRaw = localStorage.getItem('sh_suppliers');
+        if (savedRaw) {
+          try {
+            const savedList = JSON.parse(savedRaw) as Supplier[];
+            const missing = savedList.filter(localItem => !list.some(dbItem => dbItem.id === localItem.id));
+            if (missing.length > 0) {
+              console.log(`Found ${missing.length} offline-created suppliers. Syncing to Firestore...`);
+              missing.forEach(async (s) => {
+                try {
+                  await setDoc(doc(db, 'suppliers', s.id), s);
+                } catch (e) {
+                  console.error("Failed to sync offline supplier:", e);
+                }
+              });
+              setSuppliers([...list, ...missing]);
+              return;
+            }
+          } catch (e) {
+            console.error("Failed to parse saved suppliers for sync:", e);
+          }
+        }
+      }
+
       setSuppliers(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'suppliers');
@@ -282,6 +350,33 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const list: Purchase[] = [];
       snapshot.forEach((doc) => list.push(doc.data() as Purchase));
       list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      // Local storage sync (one-time upon connecting to Firestore)
+      if (!hasSyncedPurchases.current) {
+        hasSyncedPurchases.current = true;
+        const savedRaw = localStorage.getItem('sh_purchases');
+        if (savedRaw) {
+          try {
+            const savedList = JSON.parse(savedRaw) as Purchase[];
+            const missing = savedList.filter(localItem => !list.some(dbItem => dbItem.id === localItem.id));
+            if (missing.length > 0) {
+              console.log(`Found ${missing.length} offline-created purchases. Syncing to Firestore...`);
+              missing.forEach(async (p) => {
+                try {
+                  await setDoc(doc(db, 'purchases', p.id), p);
+                } catch (e) {
+                  console.error("Failed to sync offline purchase:", e);
+                }
+              });
+              setPurchases([...missing, ...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+              return;
+            }
+          } catch (e) {
+            console.error("Failed to parse saved purchases for sync:", e);
+          }
+        }
+      }
+
       setPurchases(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'purchases');
@@ -292,6 +387,33 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const list: Payment[] = [];
       snapshot.forEach((doc) => list.push(doc.data() as Payment));
       list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      // Local storage sync (one-time upon connecting to Firestore)
+      if (!hasSyncedPayments.current) {
+        hasSyncedPayments.current = true;
+        const savedRaw = localStorage.getItem('sh_payments');
+        if (savedRaw) {
+          try {
+            const savedList = JSON.parse(savedRaw) as Payment[];
+            const missing = savedList.filter(localItem => !list.some(dbItem => dbItem.id === localItem.id));
+            if (missing.length > 0) {
+              console.log(`Found ${missing.length} offline-created payments. Syncing to Firestore...`);
+              missing.forEach(async (pay) => {
+                try {
+                  await setDoc(doc(db, 'payments', pay.id), pay);
+                } catch (e) {
+                  console.error("Failed to sync offline payment:", e);
+                }
+              });
+              setPayments([...missing, ...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+              return;
+            }
+          } catch (e) {
+            console.error("Failed to parse saved payments for sync:", e);
+          }
+        }
+      }
+
       setPayments(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'payments');
@@ -302,6 +424,33 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const list: ActivityLog[] = [];
       snapshot.forEach((doc) => list.push(doc.data() as ActivityLog));
       list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      // Local storage sync (one-time upon connecting to Firestore)
+      if (!hasSyncedLogs.current) {
+        hasSyncedLogs.current = true;
+        const savedRaw = localStorage.getItem('sh_logs');
+        if (savedRaw) {
+          try {
+            const savedList = JSON.parse(savedRaw) as ActivityLog[];
+            const missing = savedList.filter(localItem => !list.some(dbItem => dbItem.id === localItem.id));
+            if (missing.length > 0) {
+              console.log(`Found ${missing.length} offline-created logs. Syncing to Firestore...`);
+              missing.forEach(async (log) => {
+                try {
+                  await setDoc(doc(db, 'logs', log.id), log);
+                } catch (e) {
+                  console.error("Failed to sync offline log:", e);
+                }
+              });
+              setLogs([...missing, ...list].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+              return;
+            }
+          } catch (e) {
+            console.error("Failed to parse saved logs for sync:", e);
+          }
+        }
+      }
+
       setLogs(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'logs');
