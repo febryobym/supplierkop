@@ -23,11 +23,12 @@ import {
   User,
   CheckCircle,
   ShieldAlert,
-  Info
+  Info,
+  RefreshCw
 } from 'lucide-react';
 
 function AppContent() {
-  const { currentUser, logout, notifications, markAllNotificationsRead, isOfflineFallback, authError } = useAppState();
+  const { currentUser, logout, notifications, markAllNotificationsRead, isOfflineFallback, authError, isSyncing } = useAppState();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
@@ -371,6 +372,18 @@ function AppContent() {
         </div>
 
       </main>
+
+      {/* Floating Syncing Indicator */}
+      {isSyncing && (
+        <div className="fixed bottom-6 right-6 bg-slate-900 border border-slate-800 text-slate-100 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 z-50 select-none animate-bounce">
+          <div className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+          </div>
+          <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
+          <span className="text-xs font-semibold tracking-wide">Sinkronisasi Data Offline...</span>
+        </div>
+      )}
     </div>
   );
 }

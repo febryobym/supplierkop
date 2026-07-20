@@ -29,6 +29,7 @@ interface StateContextType {
   notifications: Notification[];
   authError: string | null;
   isOfflineFallback: boolean;
+  isSyncing: boolean;
   login: (email: string, password: string) => boolean;
   logout: () => void;
   addSupplier: (supplier: Omit<Supplier, 'id'>) => void;
@@ -98,23 +99,25 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [authError, setAuthError] = useState<string | null>(null);
   const [isOfflineFallback, setIsOfflineFallback] = useState(false);
 
+  const checkFirestoreConnection = async () => {
+    try {
+      await getDocFromServer(doc(db, 'system_config', 'genesis'));
+      setIsOfflineFallback(false);
+      setAuthError(null);
+      return true;
+    } catch (error: any) {
+      console.warn("Firestore connection check failed, falling back to local mode:", error);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      setAuthError(`firestore-error: ${errMsg}`);
+      setIsOfflineFallback(true);
+      return false;
+    } finally {
+      setIsConnectionChecked(true);
+    }
+  };
+
   // Initialize Firebase Auth + Connection Validation
   useEffect(() => {
-    const checkFirestoreConnection = async () => {
-      try {
-        await getDocFromServer(doc(db, 'system_config', 'genesis'));
-        setIsOfflineFallback(false);
-        setAuthError(null);
-      } catch (error: any) {
-        console.warn("Firestore connection check failed, falling back to local mode:", error);
-        const errMsg = error instanceof Error ? error.message : String(error);
-        setAuthError(`firestore-error: ${errMsg}`);
-        setIsOfflineFallback(true);
-      } finally {
-        setIsConnectionChecked(true);
-      }
-    };
-
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setIsAuthReady(true);
@@ -143,6 +146,47 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem('sh_current_user', JSON.stringify(currentUser));
   }, [currentUser]);
+
+  // Listen to window online/offline events for instantaneous reaction
+  useEffect(() => {
+    const handleOnline = async () => {
+      console.log("Network online event detected. Verifying Firestore connection...");
+      await checkFirestoreConnection();
+    };
+
+    const handleOffline = () => {
+      console.log("Network offline event detected. Switching to offline mode.");
+      setIsOfflineFallback(true);
+      setIsSyncCompleted(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Periodic Connection Re-check when offline as a robust fallback
+  useEffect(() => {
+    if (!isOfflineFallback) return;
+
+    const interval = setInterval(async () => {
+      console.log("Periodic background check: Checking if Firestore connection is restored...");
+      try {
+        await getDocFromServer(doc(db, 'system_config', 'genesis'));
+        console.log("Firestore connection restored in background!");
+        setIsOfflineFallback(false);
+        setAuthError(null);
+      } catch (error) {
+        // Still offline, silent ignore
+      }
+    }, 15000); // Check every 15 seconds
+
+    return () => clearInterval(interval);
+  }, [isOfflineFallback]);
 
   // Keep currentUser state in sync with master users list updates (e.g. password or role changes)
   useEffect(() => {
@@ -283,6 +327,25 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               await setDoc(doc(db, 'users', u.id), u);
             }
           }
+
+          const updatedUsers = savedUsers.filter(localItem => {
+            const dbItem = dbUsers.find(dbItem => dbItem.id === localItem.id);
+            if (!dbItem) return false;
+            return (
+              localItem.name !== dbItem.name ||
+              localItem.email !== dbItem.email ||
+              localItem.role !== dbItem.role ||
+              localItem.password !== dbItem.password ||
+              localItem.username !== dbItem.username
+            );
+          });
+
+          if (updatedUsers.length > 0) {
+            console.log(`Syncing ${updatedUsers.length} offline-modified users to Firestore...`);
+            for (const u of updatedUsers) {
+              await setDoc(doc(db, 'users', u.id), u);
+            }
+          }
         }
 
         // 2. Sync Suppliers
@@ -301,6 +364,29 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (missingSuppliers.length > 0) {
             console.log(`Syncing ${missingSuppliers.length} offline-created suppliers to Firestore...`);
             for (const s of missingSuppliers) {
+              await setDoc(doc(db, 'suppliers', s.id), s);
+            }
+          }
+
+          const updatedSuppliers = savedSuppliers.filter(localItem => {
+            const dbItem = dbSuppliers.find(dbItem => dbItem.id === localItem.id);
+            if (!dbItem) return false;
+            return (
+              localItem.name !== dbItem.name ||
+              localItem.code !== dbItem.code ||
+              localItem.address !== dbItem.address ||
+              localItem.phone !== dbItem.phone ||
+              localItem.contactPerson !== dbItem.contactPerson ||
+              localItem.email !== dbItem.email ||
+              localItem.bankName !== dbItem.bankName ||
+              localItem.bankAccount !== dbItem.bankAccount ||
+              localItem.bankAccountHolder !== dbItem.bankAccountHolder
+            );
+          });
+
+          if (updatedSuppliers.length > 0) {
+            console.log(`Syncing ${updatedSuppliers.length} offline-modified suppliers to Firestore...`);
+            for (const s of updatedSuppliers) {
               await setDoc(doc(db, 'suppliers', s.id), s);
             }
           }
@@ -325,6 +411,26 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               await setDoc(doc(db, 'purchases', p.id), p);
             }
           }
+
+          const updatedPurchases = savedPurchases.filter(localItem => {
+            const dbItem = dbPurchases.find(dbItem => dbItem.id === localItem.id);
+            if (!dbItem) return false;
+            return (
+              localItem.paidAmount !== dbItem.paidAmount ||
+              localItem.remainingAmount !== dbItem.remainingAmount ||
+              localItem.status !== dbItem.status ||
+              localItem.invoiceNumber !== dbItem.invoiceNumber ||
+              localItem.supplierId !== dbItem.supplierId ||
+              localItem.total !== dbItem.total
+            );
+          });
+
+          if (updatedPurchases.length > 0) {
+            console.log(`Syncing ${updatedPurchases.length} offline-modified purchases to Firestore...`);
+            for (const p of updatedPurchases) {
+              await setDoc(doc(db, 'purchases', p.id), p);
+            }
+          }
         }
 
         // 4. Sync Payments
@@ -343,6 +449,25 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (missingPayments.length > 0) {
             console.log(`Syncing ${missingPayments.length} offline-created payments to Firestore...`);
             for (const pay of missingPayments) {
+              await setDoc(doc(db, 'payments', pay.id), pay);
+            }
+          }
+
+          const updatedPayments = savedPayments.filter(localItem => {
+            const dbItem = dbPayments.find(dbItem => dbItem.id === localItem.id);
+            if (!dbItem) return false;
+            return (
+              localItem.amount !== dbItem.amount ||
+              localItem.paymentMethod !== dbItem.paymentMethod ||
+              localItem.referenceNumber !== dbItem.referenceNumber ||
+              localItem.paymentDate !== dbItem.paymentDate ||
+              localItem.purchaseId !== dbItem.purchaseId
+            );
+          });
+
+          if (updatedPayments.length > 0) {
+            console.log(`Syncing ${updatedPayments.length} offline-modified payments to Firestore...`);
+            for (const pay of updatedPayments) {
               await setDoc(doc(db, 'payments', pay.id), pay);
             }
           }
@@ -1047,6 +1172,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         notifications,
         authError,
         isOfflineFallback,
+        isSyncing,
         login,
         logout,
         addSupplier,
