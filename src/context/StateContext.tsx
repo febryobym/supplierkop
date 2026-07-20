@@ -274,7 +274,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (savedRaw) {
           try {
             const savedList = JSON.parse(savedRaw) as User[];
-            const missing = savedList.filter(localItem => !list.some(dbItem => dbItem.id === localItem.id));
+            const missing = savedList.filter(localItem => 
+              !list.some(dbItem => dbItem.id === localItem.id) &&
+              !PREDEFINED_USERS.some(demoItem => demoItem.id === localItem.id)
+            );
             if (missing.length > 0) {
               console.log(`Found ${missing.length} offline-created users. Syncing to Firestore...`);
               missing.forEach(async (u) => {
@@ -321,7 +324,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (savedRaw) {
           try {
             const savedList = JSON.parse(savedRaw) as Supplier[];
-            const missing = savedList.filter(localItem => !list.some(dbItem => dbItem.id === localItem.id));
+            const missing = savedList.filter(localItem => 
+              !list.some(dbItem => dbItem.id === localItem.id) &&
+              !INITIAL_SUPPLIERS.some(demoItem => demoItem.id === localItem.id)
+            );
             if (missing.length > 0) {
               console.log(`Found ${missing.length} offline-created suppliers. Syncing to Firestore...`);
               missing.forEach(async (s) => {
@@ -358,7 +364,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (savedRaw) {
           try {
             const savedList = JSON.parse(savedRaw) as Purchase[];
-            const missing = savedList.filter(localItem => !list.some(dbItem => dbItem.id === localItem.id));
+            const missing = savedList.filter(localItem => 
+              !list.some(dbItem => dbItem.id === localItem.id) &&
+              !INITIAL_PURCHASES.some(demoItem => demoItem.id === localItem.id)
+            );
             if (missing.length > 0) {
               console.log(`Found ${missing.length} offline-created purchases. Syncing to Firestore...`);
               missing.forEach(async (p) => {
@@ -395,7 +404,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (savedRaw) {
           try {
             const savedList = JSON.parse(savedRaw) as Payment[];
-            const missing = savedList.filter(localItem => !list.some(dbItem => dbItem.id === localItem.id));
+            const missing = savedList.filter(localItem => 
+              !list.some(dbItem => dbItem.id === localItem.id) &&
+              !INITIAL_PAYMENTS.some(demoItem => demoItem.id === localItem.id)
+            );
             if (missing.length > 0) {
               console.log(`Found ${missing.length} offline-created payments. Syncing to Firestore...`);
               missing.forEach(async (pay) => {
@@ -432,7 +444,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (savedRaw) {
           try {
             const savedList = JSON.parse(savedRaw) as ActivityLog[];
-            const missing = savedList.filter(localItem => !list.some(dbItem => dbItem.id === localItem.id));
+            const missing = savedList.filter(localItem => 
+              !list.some(dbItem => dbItem.id === localItem.id) &&
+              !INITIAL_LOGS.some(demoItem => demoItem.id === localItem.id)
+            );
             if (missing.length > 0) {
               console.log(`Found ${missing.length} offline-created logs. Syncing to Firestore...`);
               missing.forEach(async (log) => {
