@@ -70,12 +70,12 @@ export default function Purchases() {
   const formTotal = Math.max(0, formSubTotal - formDiscount + formTaxAmount);
 
   // Derived calculations for adjustment options
-  const selectedSupplierOverpaidPurchases = purchases.filter(p => p.supplierId === formSupplierId && p.remainingAmount < 0);
+  const selectedSupplierOverpaidPurchases = purchases.filter(p => p.supplierId === formSupplierId && p.remainingAmount < 0 && p.id !== editingPurchaseId);
   const totalOverpaymentAvailable = selectedSupplierOverpaidPurchases.reduce((acc, p) => acc + Math.abs(p.remainingAmount), 0);
   const appliedOverpaymentValue = applyOverpayment ? Math.min(totalOverpaymentAvailable, formTotal) : 0;
   const formNetPayable = Math.max(0, formTotal - appliedOverpaymentValue);
 
-  const selectedSupplierUnderpaidPurchases = purchases.filter(p => p.supplierId === formSupplierId && p.remainingAmount > 0);
+  const selectedSupplierUnderpaidPurchases = purchases.filter(p => p.supplierId === formSupplierId && p.remainingAmount > 0 && p.id !== editingPurchaseId);
 
   const handleOpenCreateForm = () => {
     if (suppliers.length === 0) {
