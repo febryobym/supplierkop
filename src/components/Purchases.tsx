@@ -205,6 +205,18 @@ export default function Purchases() {
       notes: formNotes
     };
 
+    const settleInvoicesList = Object.keys(selectedUnpaidInvoiceIds)
+      .filter(id => selectedUnpaidInvoiceIds[id])
+      .map(id => {
+        const p = purchases.find(p => p.id === id);
+        return {
+          purchaseId: id,
+          amountToPay: p ? p.remainingAmount : 0,
+          paymentMethod: unpaidInvoicePaymentMethods[id] || 'Transfer Bank'
+        };
+      })
+      .filter(item => item.amountToPay > 0);
+
     if (editingPurchaseId) {
       // Backend safety check:
       const existing = purchases.find(p => p.id === editingPurchaseId);
@@ -212,21 +224,12 @@ export default function Purchases() {
         alert('Tidak bisa mengubah pembelian yang sudah mulai diangsur atau dilunasi!');
         return;
       }
-      updatePurchase(editingPurchaseId, purchasePayload);
+      updatePurchase(editingPurchaseId, purchasePayload, {
+        applyOverpaymentAmount: appliedOverpaymentValue,
+        settleInvoices: settleInvoicesList
+      });
       setSuccessMessage('Sukses memperbarui faktur pembelian barang!');
     } else {
-      const settleInvoicesList = Object.keys(selectedUnpaidInvoiceIds)
-        .filter(id => selectedUnpaidInvoiceIds[id])
-        .map(id => {
-          const p = purchases.find(p => p.id === id);
-          return {
-            purchaseId: id,
-            amountToPay: p ? p.remainingAmount : 0,
-            paymentMethod: unpaidInvoicePaymentMethods[id] || 'Transfer Bank'
-          };
-        })
-        .filter(item => item.amountToPay > 0);
-
       // Trigger action in StateContext
       addPurchase(purchasePayload, {
         applyOverpaymentAmount: appliedOverpaymentValue,
