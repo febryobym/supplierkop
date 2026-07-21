@@ -1081,9 +1081,12 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const existing = purchases.find((p) => p.id === id);
     if (!existing) return;
 
-    // Check if it already has payments (for extra security)
-    const hasPayments = payments.some((pay) => pay.purchaseId === id) || existing.paidAmount > 0;
-    if (hasPayments) {
+    // Check if it has any manual payments (excluding automated adjustments created during this purchase's creation)
+    const hasManualPayments = payments.some((pay) => 
+      pay.purchaseId === id && 
+      !(pay.notes && (pay.notes.includes('Potongan otomatis menggunakan kelebihan dana') || pay.notes.includes('kelebihan dana')))
+    );
+    if (hasManualPayments) {
       alert("Pembelian ini tidak dapat diubah karena sudah ada pembayaran yang tercatat!");
       return;
     }
@@ -1106,7 +1109,40 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       status: newPurchaseStatus
     };
 
-    // Prepare lists of updates
+    // Revert/rollback OLD payments and adjustments related to this purchase before applying new ones
+    const oldPayments = payments.filter(pay => 
+      (pay.notes && pay.notes.includes(`(Input gabungan saat transaksi ${existing.invoiceNumber})`)) ||
+      (pay.notes && pay.notes.includes(`Kelebihan dana dipindahkan ke ${existing.invoiceNumber}`)) ||
+      (pay.purchaseId === id && pay.notes && pay.notes.includes('kelebihan dana'))
+    );
+
+    const purchasesToRestoreMap = new Map<string, Purchase>();
+    
+    oldPayments.forEach(pay => {
+      const targetId = pay.purchaseId;
+      if (targetId !== id) {
+        const targetPurch = purchasesToRestoreMap.get(targetId) || purchases.find(p => p.id === targetId);
+        if (targetPurch) {
+          const restoredPaid = targetPurch.paidAmount - pay.amount;
+          const restoredRemaining = targetPurch.total - restoredPaid;
+          let restoredStatus: PurchaseStatus = 'Belum Lunas';
+          if (restoredPaid >= targetPurch.total) {
+            restoredStatus = 'Lunas';
+          } else if (restoredPaid > 0) {
+            restoredStatus = 'Sebagian';
+          }
+          
+          purchasesToRestoreMap.set(targetId, {
+            ...targetPurch,
+            paidAmount: restoredPaid,
+            remainingAmount: restoredRemaining,
+            status: restoredStatus
+          });
+        }
+      }
+    });
+
+    // Prepare lists of new updates
     const paymentsToCreate: Payment[] = [];
     const purchasesToUpdate: { id: string; paidAmount: number; remainingAmount: number; status: PurchaseStatus }[] = [];
 
@@ -1123,9 +1159,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         createdAt: new Date().toISOString()
       });
 
-      // Deduct from old overpaid purchases
+      // Deduct from old overpaid purchases (using active restored states)
       let remainingOverpaymentToDeduct = applyOverpaymentAmount;
       const overpaidPurchases = purchases
+        .map(p => purchasesToRestoreMap.get(p.id) || p)
         .filter(p => p.supplierId === purchaseData.supplierId && p.remainingAmount < 0 && p.id !== id)
         .sort((a, b) => new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime());
 
@@ -1169,7 +1206,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Process previous invoice settlements
     if (options?.settleInvoices && options.settleInvoices.length > 0) {
       options.settleInvoices.forEach((settle, idx) => {
-        const unpaidPurchase = purchases.find(p => p.id === settle.purchaseId);
+        const unpaidPurchase = purchasesToRestoreMap.get(settle.purchaseId) || purchases.find(p => p.id === settle.purchaseId);
         if (unpaidPurchase) {
           const newPaid = unpaidPurchase.paidAmount + settle.amountToPay;
           const newRemaining = unpaidPurchase.total - newPaid;
@@ -1203,29 +1240,51 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (isOfflineFallback) {
       setPurchases((prev) => {
-        let updated = prev.map((p) => (p.id === id ? updatedPurchase : p));
+        // First, apply restorations to prev
+        let updated = prev.map(p => purchasesToRestoreMap.get(p.id) || p);
+        // Then, apply the updated purchase
+        updated = updated.map((p) => (p.id === id ? updatedPurchase : p));
+        // Then, apply new updates
         purchasesToUpdate.forEach(up => {
           updated = updated.map(p => p.id === up.id ? { ...p, paidAmount: up.paidAmount, remainingAmount: up.remainingAmount, status: up.status } : p);
         });
         return updated;
       });
-      if (paymentsToCreate.length > 0) {
-        setPayments((prev) => [...paymentsToCreate, ...prev]);
-      }
+      setPayments((prev) => {
+        const filtered = prev.filter(p => !oldPayments.some(op => op.id === p.id));
+        return [...paymentsToCreate, ...filtered];
+      });
       await addSystemLog('EDIT_PEMBELIAN', `Invoice ${updatedPurchase.invoiceNumber}`);
     } else {
       const batch = writeBatch(db);
       
+      // Delete old payments doc
+      oldPayments.forEach(pay => {
+        batch.delete(doc(db, 'payments', pay.id));
+      });
+
       // Update existing purchase doc
       batch.set(doc(db, 'purchases', id), updatedPurchase);
 
-      // Write updates for other purchases
+      // Write updates for other purchases (merging restorations and new updates)
+      const finalPurchasesUpdates = new Map<string, { paidAmount: number; remainingAmount: number; status: PurchaseStatus }>();
+      purchasesToRestoreMap.forEach((p, targetId) => {
+        finalPurchasesUpdates.set(targetId, {
+          paidAmount: p.paidAmount,
+          remainingAmount: p.remainingAmount,
+          status: p.status
+        });
+      });
       purchasesToUpdate.forEach(up => {
-        batch.update(doc(db, 'purchases', up.id), {
+        finalPurchasesUpdates.set(up.id, {
           paidAmount: up.paidAmount,
           remainingAmount: up.remainingAmount,
           status: up.status
         });
+      });
+
+      finalPurchasesUpdates.forEach((val, pId) => {
+        batch.update(doc(db, 'purchases', pId), val);
       });
 
       // Write new payments

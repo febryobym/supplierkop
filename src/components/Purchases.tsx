@@ -18,7 +18,7 @@ interface FormLineItem {
 }
 
 export default function Purchases() {
-  const { purchases, suppliers, addPurchase, updatePurchase, deletePurchase, currentUser } = useAppState();
+  const { purchases, suppliers, payments, addPurchase, updatePurchase, deletePurchase, currentUser } = useAppState();
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,6 +61,23 @@ export default function Purchases() {
   const canDelete = currentUser?.role !== 'Staff';
   const canEdit = true;
 
+  // Helper to compute original remaining amount of a purchase before this editing transaction's adjustments
+  const getOriginalRemainingAmount = (invoice: Purchase) => {
+    if (!editingPurchaseId) return invoice.remainingAmount;
+    
+    // Find any adjustment payments related to this invoice from this editing transaction
+    const matchPay = payments.filter(pay => 
+      pay.purchaseId === invoice.id && 
+      pay.notes && 
+      (
+        pay.notes.includes(`(Input gabungan saat transaksi ${formInvoiceNumber})`) ||
+        pay.notes.includes(`Kelebihan dana dipindahkan ke ${formInvoiceNumber}`)
+      )
+    ).reduce((acc, pay) => acc + pay.amount, 0);
+    
+    return invoice.remainingAmount + matchPay;
+  };
+
   // Calculations for active form
   const formSubTotal = lineItems.reduce((acc, item) => {
     const q = typeof item.quantity === 'string' ? (parseFloat(item.quantity.replace(',', '.')) || 0) : item.quantity;
@@ -69,14 +86,21 @@ export default function Purchases() {
   const formTaxAmount = Math.round((formSubTotal - formDiscount) * (formTaxPercent / 100));
   const formTotal = Math.max(0, formSubTotal - formDiscount + formTaxAmount);
 
-  // Derived calculations for adjustment options
-  const selectedSupplierOverpaidPurchases = purchases.filter(p => p.supplierId === formSupplierId && p.remainingAmount < 0 && p.id !== editingPurchaseId);
-  const totalOverpaymentAvailable = selectedSupplierOverpaidPurchases.reduce((acc, p) => acc + Math.abs(p.remainingAmount), 0);
-  const selectedSupplierUnderpaidPurchases = purchases.filter(p => p.supplierId === formSupplierId && p.remainingAmount > 0 && p.id !== editingPurchaseId);
+  // Derived calculations for adjustment options (utilizing original amounts when editing)
+  const selectedSupplierOverpaidPurchases = purchases.filter(p => {
+    const origRemaining = getOriginalRemainingAmount(p);
+    return p.supplierId === formSupplierId && origRemaining < 0 && p.id !== editingPurchaseId;
+  });
+  const totalOverpaymentAvailable = selectedSupplierOverpaidPurchases.reduce((acc, p) => acc + Math.abs(getOriginalRemainingAmount(p)), 0);
+  
+  const selectedSupplierUnderpaidPurchases = purchases.filter(p => {
+    const origRemaining = getOriginalRemainingAmount(p);
+    return p.supplierId === formSupplierId && origRemaining > 0 && p.id !== editingPurchaseId;
+  });
 
   const totalUnderpaymentSettle = selectedSupplierUnderpaidPurchases
     .filter(p => selectedUnpaidInvoiceIds[p.id])
-    .reduce((acc, p) => acc + p.remainingAmount, 0);
+    .reduce((acc, p) => acc + getOriginalRemainingAmount(p), 0);
 
   const formTotalBelanjaBersih = formTotal + totalUnderpaymentSettle;
   const appliedOverpaymentValue = applyOverpayment ? Math.min(totalOverpaymentAvailable, formTotalBelanjaBersih) : 0;
@@ -129,10 +153,30 @@ export default function Purchases() {
     }));
     setLineItems(mappedItems);
     
-    // Reset adjustments states
-    setApplyOverpayment(false);
-    setSelectedUnpaidInvoiceIds({});
-    setUnpaidInvoicePaymentMethods({});
+    // Check if overpayment was applied to this purchase
+    const overpaymentPayment = payments.find(pay => 
+      pay.purchaseId === p.id && 
+      pay.notes && 
+      pay.notes.includes('kelebihan dana')
+    );
+    setApplyOverpayment(!!overpaymentPayment);
+
+    // Find previous unpaid invoices settled during this transaction
+    const matchingPayments = payments.filter(pay => 
+      pay.notes && 
+      pay.notes.includes(`(Input gabungan saat transaksi ${p.invoiceNumber})`)
+    );
+
+    const initialSelectedUnpaid: Record<string, boolean> = {};
+    const initialUnpaidMethods: Record<string, PaymentMethod> = {};
+
+    matchingPayments.forEach(pay => {
+      initialSelectedUnpaid[pay.purchaseId] = true;
+      initialUnpaidMethods[pay.purchaseId] = pay.paymentMethod;
+    });
+
+    setSelectedUnpaidInvoiceIds(initialSelectedUnpaid);
+    setUnpaidInvoicePaymentMethods(initialUnpaidMethods);
     
     setErrorMessage('');
     setIsFormOpen(true);
@@ -695,7 +739,7 @@ export default function Purchases() {
                                 <div className="text-right space-y-0.5">
                                   <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-medium">Sisa Hutang</span>
                                   <span className="font-mono font-bold text-rose-600">
-                                    {formatRupiah(p.remainingAmount)}
+                                    {formatRupiah(getOriginalRemainingAmount(p))}
                                   </span>
                                 </div>
                               </div>
@@ -1108,6 +1152,28 @@ export default function Purchases() {
                     <span>PPN Pertambahan Nilai ({selectedPurchase.tax}%)</span>
                     <span className="font-mono text-gray-700"> + {formatRupiah(selectedPurchase.taxAmount)}</span>
                   </div>
+                  {/* Find and display settled invoices for selectedPurchase */}
+                  {(() => {
+                    const matchedPays = payments.filter(pay => 
+                      pay.notes && pay.notes.includes(`(Input gabungan saat transaksi ${selectedPurchase.invoiceNumber})`)
+                    );
+                    if (matchedPays.length === 0) return null;
+                    return (
+                      <div className="space-y-1.5 border-t border-gray-100 pt-2 animate-fade-in bg-indigo-50/20 p-2 rounded-xl">
+                        <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider block">Pelunasan Sisa Hutang Tambahan:</span>
+                        {matchedPays.map((pay, idx) => {
+                          const p = purchases.find(p => p.id === pay.purchaseId);
+                          return (
+                            <div key={idx} className="flex justify-between text-[11px] text-indigo-700 font-medium font-mono pl-1">
+                              <span>• {p ? p.invoiceNumber : 'Invoice'} ({pay.paymentMethod})</span>
+                              <span>+ {formatRupiah(pay.amount)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex justify-between border-t border-gray-200 pt-3 text-sm font-bold text-gray-950">
                     <span>Grand Total Bersih</span>
                     <span className="font-mono text-indigo-700 text-sm">{formatRupiah(selectedPurchase.total)}</span>
@@ -1119,6 +1185,21 @@ export default function Purchases() {
                     <span>Sudah Dibayar (Dana Pelunasan)</span>
                     <span className="font-mono text-gray-700">{formatRupiah(selectedPurchase.paidAmount)}</span>
                   </div>
+
+                  {(() => {
+                    const ovPay = payments.find(pay => 
+                      pay.purchaseId === selectedPurchase.id && 
+                      pay.notes && 
+                      pay.notes.includes('kelebihan dana')
+                    );
+                    if (!ovPay) return null;
+                    return (
+                      <div className="flex justify-between text-[11px] text-emerald-600 font-medium bg-emerald-50/20 p-1.5 rounded-lg border border-emerald-100/30">
+                        <span>• Potongan Kelebihan Dana</span>
+                        <span className="font-mono"> - {formatRupiah(ovPay.amount)}</span>
+                      </div>
+                    );
+                  })()}
                   <div className="flex justify-between text-[11px] font-bold text-rose-600">
                     <span>Total Sisa / Hutang Dagang</span>
                     <span className="font-mono">{formatRupiah(selectedPurchase.remainingAmount)}</span>
