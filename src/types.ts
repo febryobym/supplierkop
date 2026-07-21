@@ -34,6 +34,7 @@ export interface PurchaseItem {
   unit: string; // e.g., 'Pcs', 'Unit', 'Box', 'Kg'
   price: number;
   total: number;
+  sellingPrice?: number;
 }
 
 export type PurchaseStatus = 'Belum Lunas' | 'Sebagian' | 'Lunas';

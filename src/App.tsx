@@ -4,6 +4,7 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Suppliers from './components/Suppliers';
 import Purchases from './components/Purchases';
+import Sales from './components/Sales';
 import Payments from './components/Payments';
 import HutangLaporan from './components/HutangLaporan';
 import UserManagement from './components/UserManagement';
@@ -14,6 +15,7 @@ import {
   FileText, 
   CreditCard, 
   TrendingUp, 
+  DollarSign,
   Users, 
   Terminal, 
   LogOut, 
@@ -46,6 +48,7 @@ function AppContent() {
     { id: 'dashboard', label: 'Dasbor Analitik', icon: LayoutDashboard, roles: ['Admin', 'Manager', 'Staff'] },
     { id: 'supplier', label: 'Database Supplier', icon: Truck, roles: ['Admin', 'Manager', 'Staff'] },
     { id: 'pembelian', label: 'Buku Pembelian', icon: FileText, roles: ['Admin', 'Manager', 'Staff'] },
+    { id: 'buku-penjualan', label: 'Buku Penjualan', icon: DollarSign, roles: ['Admin'] },
     { id: 'pembayaran', label: 'Mutasi Kas / Bayar', icon: CreditCard, roles: ['Admin', 'Manager', 'Staff'] },
     { id: 'laporan-hutang', label: 'Laporan Hutang', icon: TrendingUp, roles: ['Admin', 'Manager', 'Staff'] },
     { id: 'pengguna', label: 'Privilege User', icon: Users, roles: ['Admin', 'Manager'] }, // Hidden for Staff
@@ -365,6 +368,7 @@ function AppContent() {
           {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
           {activeTab === 'supplier' && <Suppliers />}
           {activeTab === 'pembelian' && <Purchases />}
+          {activeTab === 'buku-penjualan' && <Sales />}
           {activeTab === 'pembayaran' && <Payments />}
           {activeTab === 'laporan-hutang' && <HutangLaporan />}
           {activeTab === 'pengguna' && <UserManagement />}

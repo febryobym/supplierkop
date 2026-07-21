@@ -12,12 +12,46 @@ export default function Dashboard({ setActiveTab }: { setActiveTab: (tab: string
   const { purchases, suppliers, payments, notifications } = useAppState();
   const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
 
-  // 1. KPI Calculations
-  const totalPurchasesAmount = purchases.reduce((sum, p) => sum + p.total, 0);
-  const totalPaidAmount = purchases.reduce((sum, p) => sum + p.paidAmount, 0);
-  const totalHutangAmount = purchases.reduce((sum, p) => sum + p.remainingAmount, 0);
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState<string>('all');
 
-  const overdueInvoices = purchases.filter(p => {
+  // List of Indonesian months
+  const monthsList = [
+    { value: 'all', label: 'Semua Bulan' },
+    { value: '01', label: 'Januari' },
+    { value: '02', label: 'Februari' },
+    { value: '03', label: 'Maret' },
+    { value: '04', label: 'April' },
+    { value: '05', label: 'Mei' },
+    { value: '06', label: 'Juni' },
+    { value: '07', label: 'Juli' },
+    { value: '08', label: 'Agustus' },
+    { value: '09', label: 'September' },
+    { value: '10', label: 'Oktober' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'Desember' }
+  ];
+
+  // Extract unique years from purchases
+  const availableYears = Array.from(new Set(purchases.map(p => p.purchaseDate.split('-')[0]))).sort((a: string, b: string) => b.localeCompare(a)) as string[];
+  if (availableYears.length === 0) {
+    availableYears.push(new Date().getFullYear().toString());
+  }
+
+  // Filter purchases based on selected month and year
+  const filteredPurchases = purchases.filter(p => {
+    const [year, month] = p.purchaseDate.split('-');
+    const matchMonth = selectedMonth === 'all' || month === selectedMonth;
+    const matchYear = selectedYear === 'all' || year === selectedYear;
+    return matchMonth && matchYear;
+  });
+
+  // 1. KPI Calculations
+  const totalPurchasesAmount = filteredPurchases.reduce((sum, p) => sum + p.total, 0);
+  const totalPaidAmount = filteredPurchases.reduce((sum, p) => sum + p.paidAmount, 0);
+  const totalHutangAmount = filteredPurchases.reduce((sum, p) => sum + p.remainingAmount, 0);
+
+  const overdueInvoices = filteredPurchases.filter(p => {
     if (p.status === 'Lunas') return false;
     const today = new Date().toISOString().split('T')[0];
     return p.dueDate < today;
@@ -27,7 +61,7 @@ export default function Dashboard({ setActiveTab }: { setActiveTab: (tab: string
 
   // 2. Chart Data Prep: Hutang per Supplier
   const supplierHutangMap: { [supplierName: string]: number } = {};
-  purchases.forEach(p => {
+  filteredPurchases.forEach(p => {
     const sName = suppliers.find(s => s.id === p.supplierId)?.name || 'Lainnya';
     supplierHutangMap[sName] = (supplierHutangMap[sName] || 0) + p.remainingAmount;
   });
@@ -39,14 +73,14 @@ export default function Dashboard({ setActiveTab }: { setActiveTab: (tab: string
 
   // 3. Status Distribution calculations (for Ring/Donut chart rendering)
   const statusCounts = {
-    Lunas: purchases.filter(p => p.status === 'Lunas').length,
-    Sebagian: purchases.filter(p => p.status === 'Sebagian').length,
-    'Belum Lunas': purchases.filter(p => p.status === 'Belum Lunas').length,
+    Lunas: filteredPurchases.filter(p => p.status === 'Lunas').length,
+    Sebagian: filteredPurchases.filter(p => p.status === 'Sebagian').length,
+    'Belum Lunas': filteredPurchases.filter(p => p.status === 'Belum Lunas').length,
   };
-  const totalStatus = purchases.length || 1;
+  const totalStatus = filteredPurchases.length || 1;
 
   // Recent Purchases List
-  const recentPurchases = purchases.slice(0, 5);
+  const recentPurchases = filteredPurchases.slice(0, 5);
 
   // SVG Chart Helper Parameters
   const chartMaxVal = Math.max(...supplierHutangList.map(item => item.amount), 100000);
@@ -66,6 +100,53 @@ export default function Dashboard({ setActiveTab }: { setActiveTab: (tab: string
         <div className="flex items-center gap-2 text-xs bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-lg text-gray-600 font-mono self-start md:self-center">
           <Calendar className="w-3.5 h-3.5 text-gray-400" />
           <span>Hari ini: {formatDate(new Date().toISOString().split('T')[0])}</span>
+        </div>
+      </div>
+
+      {/* Filter Panel */}
+      <div className="bg-white border border-gray-100 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-indigo-600" />
+          <span className="text-xs font-semibold text-gray-700">Filter Analitik Periode:</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Month Select */}
+          <select
+            id="month-filter"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-gray-50 border border-gray-200 text-gray-800 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-sans outline-none cursor-pointer"
+          >
+            {monthsList.map(m => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+
+          {/* Year Select */}
+          <select
+            id="year-filter"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="bg-gray-50 border border-gray-200 text-gray-800 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-sans outline-none cursor-pointer"
+          >
+            <option value="all">Semua Tahun</option>
+            {availableYears.map(yr => (
+              <option key={yr} value={yr}>{yr}</option>
+            ))}
+          </select>
+
+          {/* Reset button if filtered */}
+          {(selectedMonth !== 'all' || selectedYear !== 'all') && (
+            <button
+              onClick={() => {
+                setSelectedMonth('all');
+                setSelectedYear('all');
+              }}
+              className="text-xs text-rose-600 hover:text-rose-700 font-semibold underline cursor-pointer pl-1"
+            >
+              Reset Filter
+            </button>
+          )}
         </div>
       </div>
 
@@ -268,7 +349,7 @@ export default function Dashboard({ setActiveTab }: { setActiveTab: (tab: string
               {/* Text in inside */}
               <g className="translate-y-1">
                 <text x="18" y="16" alignmentBaseline="middle" textAnchor="middle" className="text-[5px] font-bold fill-gray-900 font-sans">
-                  {purchases.length}
+                  {filteredPurchases.length}
                 </text>
                 <text x="18" y="21" alignmentBaseline="middle" textAnchor="middle" className="text-[2.5px] fill-gray-400 font-sans tracking-wide">
                   FAKTUR

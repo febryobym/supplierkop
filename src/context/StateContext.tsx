@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { User, Supplier, Purchase, Payment, ActivityLog, Notification, UserRole, PurchaseStatus, PaymentMethod } from '../types';
+import { User, Supplier, Purchase, PurchaseItem, Payment, ActivityLog, Notification, UserRole, PurchaseStatus, PaymentMethod } from '../types';
 import { INITIAL_SUPPLIERS, INITIAL_PURCHASES, INITIAL_PAYMENTS, INITIAL_LOGS, PREDEFINED_USERS } from '../data';
 import { 
   collection, 
@@ -50,6 +50,7 @@ interface StateContextType {
       settleInvoices?: { purchaseId: string; amountToPay: number; paymentMethod: PaymentMethod }[];
     }
   ) => void;
+  updatePurchaseItems: (id: string, items: PurchaseItem[]) => Promise<void>;
   deletePurchase: (id: string) => boolean;
   addPayment: (payment: Omit<Payment, 'id' | 'createdAt' | 'receivedBy'>) => void;
   updatePayment: (id: string, payment: Omit<Payment, 'id' | 'createdAt' | 'receivedBy'>) => void;
@@ -98,7 +99,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
     const saved = localStorage.getItem('sh_suppliers');
     const parsed = saved ? JSON.parse(saved) : INITIAL_SUPPLIERS;
-    return Array.isArray(parsed) ? parsed.filter((s: Supplier) => !['spl-1', 'spl-2', 'spl-3', 'spl-4'].includes(s.id)) : INITIAL_SUPPLIERS;
+    return Array.isArray(parsed) ? parsed.filter((s: Supplier) => !['spl-2', 'spl-3', 'spl-4'].includes(s.id)) : INITIAL_SUPPLIERS;
   });
   const [purchases, setPurchases] = useState<Purchase[]>(() => {
     const saved = localStorage.getItem('sh_purchases');
@@ -248,7 +249,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const savedSuppliers = localStorage.getItem('sh_suppliers');
     const sList = savedSuppliers ? JSON.parse(savedSuppliers) : INITIAL_SUPPLIERS;
-    setSuppliers(Array.isArray(sList) ? sList.filter((s: Supplier) => !['spl-1', 'spl-2', 'spl-3', 'spl-4'].includes(s.id)) : INITIAL_SUPPLIERS);
+    setSuppliers(Array.isArray(sList) ? sList.filter((s: Supplier) => !['spl-2', 'spl-3', 'spl-4'].includes(s.id)) : INITIAL_SUPPLIERS);
 
     const savedPurchases = localStorage.getItem('sh_purchases');
     const pList = savedPurchases ? JSON.parse(savedPurchases) : INITIAL_PURCHASES;
@@ -304,7 +305,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           
           // Old demo keys
           const demoUserIds = ['usr-1', 'usr-2', 'usr-3'];
-          const demoSupplierIds = ['spl-1', 'spl-2', 'spl-3', 'spl-4'];
+          const demoSupplierIds = ['spl-2', 'spl-3', 'spl-4'];
           const demoPurchaseIds = ['pur-1', 'pur-2', 'pur-3', 'pur-4'];
           const demoPaymentIds = ['pay-1', 'pay-2'];
           const demoLogIds = ['log-1', 'log-2', 'log-3'];
@@ -660,7 +661,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const list: Supplier[] = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data() as Supplier;
-        if (['spl-1', 'spl-2', 'spl-3', 'spl-4'].includes(data.id)) {
+        if (['spl-2', 'spl-3', 'spl-4'].includes(data.id)) {
           deleteDoc(doc(db, 'suppliers', data.id)).catch(() => {});
         } else {
           list.push(data);
@@ -1301,6 +1302,28 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const updatePurchaseItems = async (id: string, items: PurchaseItem[]) => {
+    const existing = purchases.find((p) => p.id === id);
+    if (!existing) return;
+
+    const updatedPurchase: Purchase = {
+      ...existing,
+      items
+    };
+
+    if (isOfflineFallback) {
+      setPurchases((prev) => prev.map((p) => (p.id === id ? updatedPurchase : p)));
+      await addSystemLog('UPDATE_HARGA_JUAL', `Invoice ${existing.invoiceNumber}`);
+    } else {
+      try {
+        await setDoc(doc(db, 'purchases', id), updatedPurchase);
+        await addSystemLog('UPDATE_HARGA_JUAL', `Invoice ${existing.invoiceNumber}`);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.WRITE, `purchases/${id}`);
+      }
+    }
+  };
+
   const deletePurchase = (id: string): boolean => {
     const hasPayments = payments.some((pay) => pay.purchaseId === id);
     if (hasPayments) return false;
@@ -1672,6 +1695,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteSupplier,
         addPurchase,
         updatePurchase,
+        updatePurchaseItems,
         deletePurchase,
         addPayment,
         updatePayment,
