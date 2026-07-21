@@ -17,3 +17,22 @@
   color: #000000 !important;
   stroke: #000000 !important;
 }
+
+/* Change all font/letter colors that would be #B4E0E8 or #91CBD5 / #92CBD6 to #011E4D */
+[class*="text-indigo-600"],
+[class*="text-indigo-700"],
+[class*="hover:text-indigo-600"]:hover,
+[class*="hover:text-indigo-700"]:hover,
+.text-indigo-600,
+.text-indigo-700,
+.hover\:text-indigo-600:hover,
+.hover\:text-indigo-700:hover {
+  color: #011e4d !important;
+}
+
+[class*="text-indigo-600"] svg,
+[class*="text-indigo-700"] svg {
+  color: #011e4d !important;
+  stroke: #011e4d !important;
+}
+
