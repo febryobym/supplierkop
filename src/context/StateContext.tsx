@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { User, Supplier, Purchase, Payment, ActivityLog, Notification, UserRole, PurchaseStatus } from '../types';
+import { User, Supplier, Purchase, Payment, ActivityLog, Notification, UserRole, PurchaseStatus, PaymentMethod } from '../types';
 import { INITIAL_SUPPLIERS, INITIAL_PURCHASES, INITIAL_PAYMENTS, INITIAL_LOGS, PREDEFINED_USERS } from '../data';
 import { 
   collection, 
@@ -35,7 +35,13 @@ interface StateContextType {
   addSupplier: (supplier: Omit<Supplier, 'id'>) => void;
   updateSupplier: (supplier: Supplier) => void;
   deleteSupplier: (id: string) => boolean;
-  addPurchase: (purchase: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>) => void;
+  addPurchase: (
+    purchase: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>,
+    options?: {
+      applyOverpaymentAmount?: number;
+      settleInvoices?: { purchaseId: string; amountToPay: number; paymentMethod: PaymentMethod }[];
+    }
+  ) => void;
   updatePurchase: (id: string, purchase: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>) => void;
   deletePurchase: (id: string) => boolean;
   addPayment: (payment: Omit<Payment, 'id' | 'createdAt' | 'receivedBy'>) => void;
@@ -753,27 +759,167 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Purchases CRUD
-  const addPurchase = async (purchaseData: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>) => {
+  const addPurchase = async (
+    purchaseData: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>,
+    options?: {
+      applyOverpaymentAmount?: number;
+      settleInvoices?: { purchaseId: string; amountToPay: number; paymentMethod: PaymentMethod }[];
+    }
+  ) => {
     const id = `pur-${Date.now()}`;
+    const applyOverpaymentAmount = options?.applyOverpaymentAmount || 0;
+
+    const newPurchasePaid = applyOverpaymentAmount;
+    const newPurchaseRemaining = purchaseData.total - applyOverpaymentAmount;
+    let newPurchaseStatus: PurchaseStatus = 'Belum Lunas';
+    if (newPurchasePaid >= purchaseData.total) {
+      newPurchaseStatus = 'Lunas';
+    } else if (newPurchasePaid > 0) {
+      newPurchaseStatus = 'Sebagian';
+    }
+
     const newPurchase: Purchase = {
       ...purchaseData,
       id,
-      paidAmount: 0,
-      remainingAmount: purchaseData.total,
-      status: 'Belum Lunas',
+      paidAmount: newPurchasePaid,
+      remainingAmount: newPurchaseRemaining,
+      status: newPurchaseStatus,
       createdBy: currentUser?.name || 'Sistem',
       createdAt: new Date().toISOString()
     };
 
+    // Prepare lists of updates
+    const paymentsToCreate: Payment[] = [];
+    const purchasesToUpdate: { id: string; paidAmount: number; remainingAmount: number; status: PurchaseStatus }[] = [];
+
+    // Create payment for the new purchase if there is overpayment applied
+    if (applyOverpaymentAmount > 0) {
+      paymentsToCreate.push({
+        id: `pay-ov-${Date.now()}`,
+        purchaseId: id,
+        amount: applyOverpaymentAmount,
+        paymentDate: purchaseData.purchaseDate,
+        paymentMethod: 'Lainnya',
+        notes: `Potongan otomatis menggunakan kelebihan dana pembayaran sebelumnya`,
+        receivedBy: currentUser?.name || 'Sistem',
+        createdAt: new Date().toISOString()
+      });
+
+      // Deduct from old overpaid purchases
+      let remainingOverpaymentToDeduct = applyOverpaymentAmount;
+      const overpaidPurchases = purchases
+        .filter(p => p.supplierId === purchaseData.supplierId && p.remainingAmount < 0)
+        .sort((a, b) => new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime());
+
+      overpaidPurchases.forEach((opPurchase, idx) => {
+        if (remainingOverpaymentToDeduct <= 0) return;
+        const availableOverpayment = -opPurchase.remainingAmount;
+        const deductOnThis = Math.min(availableOverpayment, remainingOverpaymentToDeduct);
+        if (deductOnThis > 0) {
+          const newPaid = opPurchase.paidAmount - deductOnThis;
+          const newRemaining = opPurchase.total - newPaid;
+          let newStatus: PurchaseStatus = 'Belum Lunas';
+          if (newPaid >= opPurchase.total) {
+            newStatus = 'Lunas';
+          } else if (newPaid > 0) {
+            newStatus = 'Sebagian';
+          }
+
+          purchasesToUpdate.push({
+            id: opPurchase.id,
+            paidAmount: newPaid,
+            remainingAmount: newRemaining,
+            status: newStatus
+          });
+
+          paymentsToCreate.push({
+            id: `pay-adj-${Date.now()}-${idx}-${opPurchase.id}`,
+            purchaseId: opPurchase.id,
+            amount: -deductOnThis,
+            paymentDate: purchaseData.purchaseDate,
+            paymentMethod: 'Lainnya',
+            notes: `Kelebihan dana dipindahkan ke ${newPurchase.invoiceNumber}`,
+            receivedBy: currentUser?.name || 'Sistem',
+            createdAt: new Date().toISOString()
+          });
+
+          remainingOverpaymentToDeduct -= deductOnThis;
+        }
+      });
+    }
+
+    // Process previous invoice settlements
+    if (options?.settleInvoices && options.settleInvoices.length > 0) {
+      options.settleInvoices.forEach((settle, idx) => {
+        const unpaidPurchase = purchases.find(p => p.id === settle.purchaseId);
+        if (unpaidPurchase) {
+          const newPaid = unpaidPurchase.paidAmount + settle.amountToPay;
+          const newRemaining = unpaidPurchase.total - newPaid;
+          let newStatus: PurchaseStatus = 'Belum Lunas';
+          if (newPaid >= unpaidPurchase.total) {
+            newStatus = 'Lunas';
+          } else if (newPaid > 0) {
+            newStatus = 'Sebagian';
+          }
+
+          purchasesToUpdate.push({
+            id: unpaidPurchase.id,
+            paidAmount: newPaid,
+            remainingAmount: newRemaining,
+            status: newStatus
+          });
+
+          paymentsToCreate.push({
+            id: `pay-settle-${Date.now()}-${idx}-${unpaidPurchase.id}`,
+            purchaseId: unpaidPurchase.id,
+            amount: settle.amountToPay,
+            paymentDate: purchaseData.purchaseDate,
+            paymentMethod: settle.paymentMethod,
+            notes: `Pelunasan sisa bayar (Input gabungan saat transaksi ${newPurchase.invoiceNumber})`,
+            receivedBy: currentUser?.name || 'Sistem',
+            createdAt: new Date().toISOString()
+          });
+        }
+      });
+    }
+
     if (isOfflineFallback) {
-      setPurchases((prev) => [newPurchase, ...prev]);
+      setPurchases((prev) => {
+        let updated = [newPurchase, ...prev];
+        purchasesToUpdate.forEach(up => {
+          updated = updated.map(p => p.id === up.id ? { ...p, paidAmount: up.paidAmount, remainingAmount: up.remainingAmount, status: up.status } : p);
+        });
+        return updated;
+      });
+      if (paymentsToCreate.length > 0) {
+        setPayments((prev) => [...paymentsToCreate, ...prev]);
+      }
       await addSystemLog('TAMBAH_PEMBELIAN', `Invoice ${newPurchase.invoiceNumber}`);
     } else {
+      const batch = writeBatch(db);
+      
+      // Add new purchase doc
+      batch.set(doc(db, 'purchases', id), newPurchase);
+
+      // Write updates for other purchases
+      purchasesToUpdate.forEach(up => {
+        batch.update(doc(db, 'purchases', up.id), {
+          paidAmount: up.paidAmount,
+          remainingAmount: up.remainingAmount,
+          status: up.status
+        });
+      });
+
+      // Write new payments
+      paymentsToCreate.forEach(p => {
+        batch.set(doc(db, 'payments', p.id), p);
+      });
+
       try {
-        await setDoc(doc(db, 'purchases', id), newPurchase);
+        await batch.commit();
         await addSystemLog('TAMBAH_PEMBELIAN', `Invoice ${newPurchase.invoiceNumber}`);
       } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, `purchases/${id}`);
+        handleFirestoreError(error, OperationType.CREATE, `purchases/${id}_and_batch_payments`);
       }
     }
   };

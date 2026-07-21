@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useAppState } from '../context/StateContext';
-import { Purchase, PurchaseItem, PurchaseStatus } from '../types';
+import { Purchase, PurchaseItem, PurchaseStatus, PaymentMethod } from '../types';
 import { formatRupiah, formatDate, exportToCSV } from '../data';
 import { Plus, Search, Eye, Trash2, Calendar, FileText, ShoppingCart, Percent, DollarSign, X, CheckCircle, Clock, AlertTriangle, FileSpreadsheet, Printer, Edit } from 'lucide-react';
 
@@ -39,6 +39,11 @@ export default function Purchases() {
   const [formTaxPercent, setFormTaxPercent] = useState<number>(11); // Standard PPN INDONESIA is 11%
   const [formDiscount, setFormDiscount] = useState<number>(0);
 
+  // Overpayment / Underpayment adjustment choices states
+  const [applyOverpayment, setApplyOverpayment] = useState(false);
+  const [selectedUnpaidInvoiceIds, setSelectedUnpaidInvoiceIds] = useState<Record<string, boolean>>({});
+  const [unpaidInvoicePaymentMethods, setUnpaidInvoicePaymentMethods] = useState<Record<string, PaymentMethod>>({});
+
   // Line items state
   const [lineItems, setLineItems] = useState<FormLineItem[]>([
     { itemName: '', quantity: '1', unit: 'Pcs', price: 0, total: 0 }
@@ -64,6 +69,14 @@ export default function Purchases() {
   const formTaxAmount = Math.round((formSubTotal - formDiscount) * (formTaxPercent / 100));
   const formTotal = Math.max(0, formSubTotal - formDiscount + formTaxAmount);
 
+  // Derived calculations for adjustment options
+  const selectedSupplierOverpaidPurchases = purchases.filter(p => p.supplierId === formSupplierId && p.remainingAmount < 0);
+  const totalOverpaymentAvailable = selectedSupplierOverpaidPurchases.reduce((acc, p) => acc + Math.abs(p.remainingAmount), 0);
+  const appliedOverpaymentValue = applyOverpayment ? Math.min(totalOverpaymentAvailable, formTotal) : 0;
+  const formNetPayable = Math.max(0, formTotal - appliedOverpaymentValue);
+
+  const selectedSupplierUnderpaidPurchases = purchases.filter(p => p.supplierId === formSupplierId && p.remainingAmount > 0);
+
   const handleOpenCreateForm = () => {
     if (suppliers.length === 0) {
       alert('Harap daftarkan supplier terlebih dahulu di tab Supplier sebelum menginput transaksi pembelian.');
@@ -82,6 +95,12 @@ export default function Purchases() {
     setFormTaxPercent(11);
     setFormDiscount(0);
     setLineItems([{ itemName: '', quantity: '1', unit: 'Pcs', price: 0, total: 0 }]);
+    
+    // Reset adjustments states
+    setApplyOverpayment(false);
+    setSelectedUnpaidInvoiceIds({});
+    setUnpaidInvoicePaymentMethods({});
+    
     setErrorMessage('');
     setIsFormOpen(true);
   };
@@ -104,6 +123,12 @@ export default function Purchases() {
       total: item.total
     }));
     setLineItems(mappedItems);
+    
+    // Reset adjustments states
+    setApplyOverpayment(false);
+    setSelectedUnpaidInvoiceIds({});
+    setUnpaidInvoicePaymentMethods({});
+    
     setErrorMessage('');
     setIsFormOpen(true);
   };
@@ -190,8 +215,23 @@ export default function Purchases() {
       updatePurchase(editingPurchaseId, purchasePayload);
       setSuccessMessage('Sukses memperbarui faktur pembelian barang!');
     } else {
+      const settleInvoicesList = Object.keys(selectedUnpaidInvoiceIds)
+        .filter(id => selectedUnpaidInvoiceIds[id])
+        .map(id => {
+          const p = purchases.find(p => p.id === id);
+          return {
+            purchaseId: id,
+            amountToPay: p ? p.remainingAmount : 0,
+            paymentMethod: unpaidInvoicePaymentMethods[id] || 'Transfer Bank'
+          };
+        })
+        .filter(item => item.amountToPay > 0);
+
       // Trigger action in StateContext
-      addPurchase(purchasePayload);
+      addPurchase(purchasePayload, {
+        applyOverpaymentAmount: appliedOverpaymentValue,
+        settleInvoices: settleInvoicesList
+      });
       setSuccessMessage('Sukses menerbitkan faktur pembelian barang!');
     }
 
@@ -507,7 +547,12 @@ export default function Purchases() {
                   <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Pilih Supplier*</label>
                   <select
                     value={formSupplierId}
-                    onChange={(e) => setFormSupplierId(e.target.value)}
+                    onChange={(e) => {
+                      setFormSupplierId(e.target.value);
+                      setApplyOverpayment(false);
+                      setSelectedUnpaidInvoiceIds({});
+                      setUnpaidInvoicePaymentMethods({});
+                    }}
                     className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2 text-xs outline-hidden font-medium"
                   >
                     {suppliers.map(s => (
@@ -555,6 +600,126 @@ export default function Purchases() {
                 </div>
 
               </div>
+
+              {/* Optional adjustments section for Overpayments and Underpayments */}
+              {(totalOverpaymentAvailable > 0 || selectedSupplierUnderpaidPurchases.length > 0) && (
+                <div className="bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100 space-y-3">
+                  <h4 className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                    <Percent className="w-4 h-4 text-indigo-600" />
+                    Penyesuaian Saldo Piutang / Hutang Supplier
+                  </h4>
+                  
+                  {/* Case 1: Overpayment exists */}
+                  {totalOverpaymentAvailable > 0 && (
+                    <div className="bg-white p-3 rounded-xl border border-indigo-100/50 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <div className="text-xs font-bold text-gray-800">
+                          Gunakan Kelebihan Bayar Sebelumnya
+                        </div>
+                        <div className="text-[11px] text-gray-500">
+                          Supplier ini memiliki kelebihan bayar total sebesar{" "}
+                          <strong className="text-indigo-600 font-mono font-semibold">
+                            {formatRupiah(totalOverpaymentAvailable)}
+                          </strong>{" "}
+                          dari invoice sebelumnya.
+                        </div>
+                      </div>
+                      
+                      <label className="relative flex items-center gap-2 cursor-pointer bg-indigo-50/70 hover:bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 transition-all select-none self-start md:self-auto">
+                        <input
+                          type="checkbox"
+                          checked={applyOverpayment}
+                          onChange={(e) => setApplyOverpayment(e.target.checked)}
+                          className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                        />
+                        <span className="text-xs font-semibold text-indigo-800">
+                          Gunakan Dana Kelebihan
+                        </span>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Case 2: Underpayment exists */}
+                  {selectedSupplierUnderpaidPurchases.length > 0 && (
+                    <div className="space-y-2 bg-white p-3 rounded-xl border border-indigo-100/50 shadow-xs">
+                      <div>
+                        <div className="text-xs font-bold text-gray-800">
+                          Pelunasan Sisa Tagihan Kurang Bayar Sebelumnya
+                        </div>
+                        <div className="text-[11px] text-gray-500">
+                          Beri tanda centang untuk melunasi tagihan yang masih outstanding saat menginput transaksi ini.
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                        {selectedSupplierUnderpaidPurchases.map((p) => {
+                          const isSelected = !!selectedUnpaidInvoiceIds[p.id];
+                          return (
+                            <div
+                              key={p.id}
+                              className={`flex flex-col md:flex-row md:items-center justify-between p-2.5 rounded-lg border text-xs gap-3 transition-colors ${
+                                isSelected
+                                  ? "bg-indigo-50/30 border-indigo-200"
+                                  : "bg-gray-50/50 border-gray-150 hover:bg-gray-50"
+                              }`}
+                            >
+                              <div className="flex items-start gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    setSelectedUnpaidInvoiceIds(prev => ({
+                                      ...prev,
+                                      [p.id]: e.target.checked
+                                    }));
+                                  }}
+                                  className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mt-0.5 cursor-pointer"
+                                />
+                                <div className="space-y-0.5">
+                                  <span className="font-mono font-bold text-gray-800">{p.invoiceNumber}</span>
+                                  <span className="text-gray-400 text-[10px] block">
+                                    Tanggal: {formatDate(p.purchaseDate)} | Jatuh tempo: {p.dueDate}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3 self-end md:self-auto">
+                                <div className="text-right space-y-0.5">
+                                  <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-medium">Sisa Hutang</span>
+                                  <span className="font-mono font-bold text-rose-600">
+                                    {formatRupiah(p.remainingAmount)}
+                                  </span>
+                                </div>
+
+                                {isSelected && (
+                                  <div className="space-y-0.5">
+                                    <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-medium">Metode Bayar</span>
+                                    <select
+                                      value={unpaidInvoicePaymentMethods[p.id] || "Transfer Bank"}
+                                      onChange={(e) => {
+                                        setUnpaidInvoicePaymentMethods(prev => ({
+                                          ...prev,
+                                          [p.id]: e.target.value as PaymentMethod
+                                        }));
+                                      }}
+                                      className="border border-gray-200 bg-white rounded-md px-1.5 py-0.5 text-[11px] font-medium animate-fade-in"
+                                    >
+                                      <option value="Transfer Bank">Transfer Bank</option>
+                                      <option value="Tunai / Cash">Tunai / Cash</option>
+                                      <option value="Kartu Kredit">Kartu Kredit</option>
+                                      <option value="Lainnya">Lainnya</option>
+                                    </select>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Form Line Items Table */}
               <div className="space-y-2">
@@ -729,8 +894,21 @@ export default function Purchases() {
                   {/* Ultimate net target price */}
                   <div className="flex items-center justify-between pt-3 border-t border-gray-200">
                     <span className="font-bold text-gray-800 text-[13px]">Total Belanja Bersih</span>
-                    <span className="font-bold text-indigo-700 font-mono text-[14px]">{formatRupiah(formTotal)}</span>
+                    <span className="font-bold text-gray-900 font-mono text-[13px]">{formatRupiah(formTotal)}</span>
                   </div>
+
+                  {applyOverpayment && appliedOverpaymentValue > 0 && (
+                    <>
+                      <div className="flex items-center justify-between text-xs text-emerald-600 font-medium">
+                        <span>Potongan Kelebihan Dana</span>
+                        <span className="font-mono">-{formatRupiah(appliedOverpaymentValue)}</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-dashed border-gray-200">
+                        <span className="font-bold text-indigo-900 text-[13px]">Sisa Tagihan Baru (Net)</span>
+                        <span className="font-bold text-indigo-700 font-mono text-[14px]">{formatRupiah(formNetPayable)}</span>
+                      </div>
+                    </>
+                  )}
 
                 </div>
 
