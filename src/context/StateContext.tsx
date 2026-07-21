@@ -42,7 +42,14 @@ interface StateContextType {
       settleInvoices?: { purchaseId: string; amountToPay: number; paymentMethod: PaymentMethod }[];
     }
   ) => void;
-  updatePurchase: (id: string, purchase: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>) => void;
+  updatePurchase: (
+    id: string,
+    purchase: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>,
+    options?: {
+      applyOverpaymentAmount?: number;
+      settleInvoices?: { purchaseId: string; amountToPay: number; paymentMethod: PaymentMethod }[];
+    }
+  ) => void;
   deletePurchase: (id: string) => boolean;
   addPayment: (payment: Omit<Payment, 'id' | 'createdAt' | 'receivedBy'>) => void;
   updatePayment: (id: string, payment: Omit<Payment, 'id' | 'createdAt' | 'receivedBy'>) => void;
@@ -79,23 +86,34 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Master lists preloaded from localStorage or defaults to eliminate visual flashing and empty layouts
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem('sh_users');
-    return saved ? JSON.parse(saved) : PREDEFINED_USERS;
+    const parsed = saved ? JSON.parse(saved) : PREDEFINED_USERS;
+    const list = Array.isArray(parsed) ? parsed.filter((u: User) => !['usr-1', 'usr-2', 'usr-3'].includes(u.id)) : PREDEFINED_USERS;
+    PREDEFINED_USERS.forEach((u) => {
+      if (!list.some((existing) => existing.id === u.id || existing.email.toLowerCase() === u.email.toLowerCase())) {
+        list.push(u);
+      }
+    });
+    return list;
   });
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
     const saved = localStorage.getItem('sh_suppliers');
-    return saved ? JSON.parse(saved) : INITIAL_SUPPLIERS;
+    const parsed = saved ? JSON.parse(saved) : INITIAL_SUPPLIERS;
+    return Array.isArray(parsed) ? parsed.filter((s: Supplier) => !['spl-1', 'spl-2', 'spl-3', 'spl-4'].includes(s.id)) : INITIAL_SUPPLIERS;
   });
   const [purchases, setPurchases] = useState<Purchase[]>(() => {
     const saved = localStorage.getItem('sh_purchases');
-    return saved ? JSON.parse(saved) : INITIAL_PURCHASES;
+    const parsed = saved ? JSON.parse(saved) : INITIAL_PURCHASES;
+    return Array.isArray(parsed) ? parsed.filter((p: Purchase) => !['pur-1', 'pur-2', 'pur-3', 'pur-4'].includes(p.id)) : INITIAL_PURCHASES;
   });
   const [payments, setPayments] = useState<Payment[]>(() => {
     const saved = localStorage.getItem('sh_payments');
-    return saved ? JSON.parse(saved) : INITIAL_PAYMENTS;
+    const parsed = saved ? JSON.parse(saved) : INITIAL_PAYMENTS;
+    return Array.isArray(parsed) ? parsed.filter((pay: Payment) => !['pay-1', 'pay-2'].includes(pay.id)) : INITIAL_PAYMENTS;
   });
   const [logs, setLogs] = useState<ActivityLog[]>(() => {
     const saved = localStorage.getItem('sh_logs');
-    return saved ? JSON.parse(saved) : INITIAL_LOGS;
+    const parsed = saved ? JSON.parse(saved) : INITIAL_LOGS;
+    return Array.isArray(parsed) ? parsed.filter((l: ActivityLog) => !['log-1', 'log-2', 'log-3'].includes(l.id)) : INITIAL_LOGS;
   });
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
@@ -219,20 +237,104 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsSyncCompleted(false);
 
     const savedUsers = localStorage.getItem('sh_users');
-    setUsers(savedUsers ? JSON.parse(savedUsers) : PREDEFINED_USERS);
+    const uList = savedUsers ? JSON.parse(savedUsers) : PREDEFINED_USERS;
+    const filteredUsers = Array.isArray(uList) ? uList.filter((u: User) => !['usr-1', 'usr-2', 'usr-3'].includes(u.id)) : PREDEFINED_USERS;
+    PREDEFINED_USERS.forEach((u) => {
+      if (!filteredUsers.some((existing) => existing.id === u.id || existing.email.toLowerCase() === u.email.toLowerCase())) {
+        filteredUsers.push(u);
+      }
+    });
+    setUsers(filteredUsers);
 
     const savedSuppliers = localStorage.getItem('sh_suppliers');
-    setSuppliers(savedSuppliers ? JSON.parse(savedSuppliers) : INITIAL_SUPPLIERS);
+    const sList = savedSuppliers ? JSON.parse(savedSuppliers) : INITIAL_SUPPLIERS;
+    setSuppliers(Array.isArray(sList) ? sList.filter((s: Supplier) => !['spl-1', 'spl-2', 'spl-3', 'spl-4'].includes(s.id)) : INITIAL_SUPPLIERS);
 
     const savedPurchases = localStorage.getItem('sh_purchases');
-    setPurchases(savedPurchases ? JSON.parse(savedPurchases) : INITIAL_PURCHASES);
+    const pList = savedPurchases ? JSON.parse(savedPurchases) : INITIAL_PURCHASES;
+    setPurchases(Array.isArray(pList) ? pList.filter((p: Purchase) => !['pur-1', 'pur-2', 'pur-3', 'pur-4'].includes(p.id)) : INITIAL_PURCHASES);
 
     const savedPayments = localStorage.getItem('sh_payments');
-    setPayments(savedPayments ? JSON.parse(savedPayments) : INITIAL_PAYMENTS);
+    const payList = savedPayments ? JSON.parse(savedPayments) : INITIAL_PAYMENTS;
+    setPayments(Array.isArray(payList) ? payList.filter((pay: Payment) => !['pay-1', 'pay-2'].includes(pay.id)) : INITIAL_PAYMENTS);
 
     const savedLogs = localStorage.getItem('sh_logs');
-    setLogs(savedLogs ? JSON.parse(savedLogs) : INITIAL_LOGS);
+    const logList = savedLogs ? JSON.parse(savedLogs) : INITIAL_LOGS;
+    setLogs(Array.isArray(logList) ? logList.filter((l: ActivityLog) => !['log-1', 'log-2', 'log-3'].includes(l.id)) : INITIAL_LOGS);
   }, [isOfflineFallback]);
+
+  // Deep auto-purge of demo records from localstorage and Firestore
+  useEffect(() => {
+    const purgeDemoRecords = async () => {
+      // 1. Check & reset local storage demo markers
+      const cachedUsers = localStorage.getItem('sh_users');
+      let needsLocalStorageWipe = false;
+      if (cachedUsers) {
+        try {
+          const parsed = JSON.parse(cachedUsers) as User[];
+          if (parsed.some(u => ['usr-1', 'usr-2', 'usr-3'].includes(u.id) || u.email.includes('supplierku.com') || u.name === 'Budi Santoso')) {
+            needsLocalStorageWipe = true;
+          }
+        } catch (e) {
+          needsLocalStorageWipe = true;
+        }
+      }
+
+      if (needsLocalStorageWipe) {
+        console.log("Demo user detected in localStorage cache. Cleaning all demo entries...");
+        localStorage.removeItem('sh_users');
+        localStorage.removeItem('sh_suppliers');
+        localStorage.removeItem('sh_purchases');
+        localStorage.removeItem('sh_payments');
+        localStorage.removeItem('sh_logs');
+        localStorage.removeItem('sh_current_user');
+
+        setUsers(PREDEFINED_USERS);
+        setSuppliers([]);
+        setPurchases([]);
+        setPayments([]);
+        setLogs([]);
+        setCurrentUser(null);
+      }
+
+      // 2. Direct online purging of pre-seeded collections in Firestore
+      if (isAuthReady && isConnectionChecked && !isOfflineFallback) {
+        try {
+          const batch = writeBatch(db);
+          
+          // Old demo keys
+          const demoUserIds = ['usr-1', 'usr-2', 'usr-3'];
+          const demoSupplierIds = ['spl-1', 'spl-2', 'spl-3', 'spl-4'];
+          const demoPurchaseIds = ['pur-1', 'pur-2', 'pur-3', 'pur-4'];
+          const demoPaymentIds = ['pay-1', 'pay-2'];
+          const demoLogIds = ['log-1', 'log-2', 'log-3'];
+
+          demoUserIds.forEach(id => batch.delete(doc(db, 'users', id)));
+          demoSupplierIds.forEach(id => batch.delete(doc(db, 'suppliers', id)));
+          demoPurchaseIds.forEach(id => batch.delete(doc(db, 'purchases', id)));
+          demoPaymentIds.forEach(id => batch.delete(doc(db, 'payments', id)));
+          demoLogIds.forEach(id => batch.delete(doc(db, 'logs', id)));
+
+          // Ensure the actual user always exists as Admin
+          batch.set(doc(db, 'users', 'usr-febry'), PREDEFINED_USERS[0]);
+
+          // Update genesis to mark clean slate
+          batch.set(doc(db, 'system_config', 'genesis'), {
+            initialized: true,
+            createdAt: new Date().toISOString(),
+            demoPurged: true
+          });
+
+          await batch.commit();
+          console.log("Firestore database successfully cleared of all demo/sample records.");
+        } catch (err) {
+          console.warn("Firestore database demo cleanup check skipped or completed previously:", err);
+        }
+      }
+    };
+
+    purgeDemoRecords();
+  }, [isAuthReady, isConnectionChecked, isOfflineFallback]);
 
   // Write state changes back to LocalStorage to guarantee robust offline caching and session durability
   useEffect(() => {
@@ -519,20 +621,36 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // 1. Sync Persons
     const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
       const list: User[] = [];
-      snapshot.forEach((doc) => list.push(doc.data() as User));
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data() as User;
+        if (['usr-1', 'usr-2', 'usr-3'].includes(data.id)) {
+          // Trigger delete reactively so they can never persist
+          deleteDoc(doc(db, 'users', data.id)).catch(() => {});
+        } else {
+          list.push(data);
+        }
+      });
 
-      if (list.length === 0) {
-        // Safe lock: ensure at least default users exist so login is always accessible
-        PREDEFINED_USERS.forEach(async (u) => {
+      // Ensure all predefined users are seeded to Firestore if they do not exist
+      PREDEFINED_USERS.forEach(async (u) => {
+        if (!list.some((existing) => existing.id === u.id || existing.email.toLowerCase() === u.email.toLowerCase())) {
           try {
             await setDoc(doc(db, 'users', u.id), u);
           } catch (e) {
-            console.error("Failed to seed User safeguard:", e);
+            console.error("Failed to seed predefined user:", e);
           }
-        });
-      } else {
-        setUsers(list);
-      }
+        }
+      });
+
+      // Merge predefined users into list state to guarantee they are immediately available
+      const mergedUsers = [...list];
+      PREDEFINED_USERS.forEach((u) => {
+        if (!mergedUsers.some((existing) => existing.id === u.id || existing.email.toLowerCase() === u.email.toLowerCase())) {
+          mergedUsers.push(u);
+        }
+      });
+
+      setUsers(mergedUsers);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'users');
     });
@@ -540,7 +658,14 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // 2. Sync Suppliers
     const unsubSuppliers = onSnapshot(collection(db, 'suppliers'), (snapshot) => {
       const list: Supplier[] = [];
-      snapshot.forEach((doc) => list.push(doc.data() as Supplier));
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data() as Supplier;
+        if (['spl-1', 'spl-2', 'spl-3', 'spl-4'].includes(data.id)) {
+          deleteDoc(doc(db, 'suppliers', data.id)).catch(() => {});
+        } else {
+          list.push(data);
+        }
+      });
       setSuppliers(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'suppliers');
@@ -549,7 +674,14 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // 3. Sync Purchases
     const unsubPurchases = onSnapshot(collection(db, 'purchases'), (snapshot) => {
       const list: Purchase[] = [];
-      snapshot.forEach((doc) => list.push(doc.data() as Purchase));
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data() as Purchase;
+        if (['pur-1', 'pur-2', 'pur-3', 'pur-4'].includes(data.id)) {
+          deleteDoc(doc(db, 'purchases', data.id)).catch(() => {});
+        } else {
+          list.push(data);
+        }
+      });
       list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setPurchases(list);
     }, (error) => {
@@ -559,7 +691,14 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // 4. Sync Payments
     const unsubPayments = onSnapshot(collection(db, 'payments'), (snapshot) => {
       const list: Payment[] = [];
-      snapshot.forEach((doc) => list.push(doc.data() as Payment));
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data() as Payment;
+        if (['pay-1', 'pay-2'].includes(data.id)) {
+          deleteDoc(doc(db, 'payments', data.id)).catch(() => {});
+        } else {
+          list.push(data);
+        }
+      });
       list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setPayments(list);
     }, (error) => {
@@ -569,7 +708,14 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // 5. Sync Logs
     const unsubLogs = onSnapshot(collection(db, 'logs'), (snapshot) => {
       const list: ActivityLog[] = [];
-      snapshot.forEach((doc) => list.push(doc.data() as ActivityLog));
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data() as ActivityLog;
+        if (['log-1', 'log-2', 'log-3'].includes(data.id)) {
+          deleteDoc(doc(db, 'logs', data.id)).catch(() => {});
+        } else {
+          list.push(data);
+        }
+      });
       list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       setLogs(list);
     }, (error) => {
@@ -924,7 +1070,14 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const updatePurchase = async (id: string, purchaseData: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>) => {
+  const updatePurchase = async (
+    id: string,
+    purchaseData: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>,
+    options?: {
+      applyOverpaymentAmount?: number;
+      settleInvoices?: { purchaseId: string; amountToPay: number; paymentMethod: PaymentMethod }[];
+    }
+  ) => {
     const existing = purchases.find((p) => p.id === id);
     if (!existing) return;
 
@@ -935,22 +1088,156 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
+    const applyOverpaymentAmount = options?.applyOverpaymentAmount || 0;
+    const newPurchasePaid = applyOverpaymentAmount;
+    const newPurchaseRemaining = purchaseData.total - applyOverpaymentAmount;
+    let newPurchaseStatus: PurchaseStatus = 'Belum Lunas';
+    if (newPurchasePaid >= purchaseData.total) {
+      newPurchaseStatus = 'Lunas';
+    } else if (newPurchasePaid > 0) {
+      newPurchaseStatus = 'Sebagian';
+    }
+
     const updatedPurchase: Purchase = {
       ...existing,
       ...purchaseData,
-      remainingAmount: purchaseData.total, // Since paidAmount is 0, sisa is total
-      status: 'Belum Lunas'
+      paidAmount: newPurchasePaid,
+      remainingAmount: newPurchaseRemaining,
+      status: newPurchaseStatus
     };
 
+    // Prepare lists of updates
+    const paymentsToCreate: Payment[] = [];
+    const purchasesToUpdate: { id: string; paidAmount: number; remainingAmount: number; status: PurchaseStatus }[] = [];
+
+    // Create payment for the updated purchase if there is overpayment applied
+    if (applyOverpaymentAmount > 0) {
+      paymentsToCreate.push({
+        id: `pay-ov-${Date.now()}`,
+        purchaseId: id,
+        amount: applyOverpaymentAmount,
+        paymentDate: purchaseData.purchaseDate,
+        paymentMethod: 'Lainnya',
+        notes: `Potongan otomatis menggunakan kelebihan dana pembayaran sebelumnya`,
+        receivedBy: currentUser?.name || 'Sistem',
+        createdAt: new Date().toISOString()
+      });
+
+      // Deduct from old overpaid purchases
+      let remainingOverpaymentToDeduct = applyOverpaymentAmount;
+      const overpaidPurchases = purchases
+        .filter(p => p.supplierId === purchaseData.supplierId && p.remainingAmount < 0 && p.id !== id)
+        .sort((a, b) => new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime());
+
+      overpaidPurchases.forEach((opPurchase, idx) => {
+        if (remainingOverpaymentToDeduct <= 0) return;
+        const availableOverpayment = -opPurchase.remainingAmount;
+        const deductOnThis = Math.min(availableOverpayment, remainingOverpaymentToDeduct);
+        if (deductOnThis > 0) {
+          const newPaid = opPurchase.paidAmount - deductOnThis;
+          const newRemaining = opPurchase.total - newPaid;
+          let newStatus: PurchaseStatus = 'Belum Lunas';
+          if (newPaid >= opPurchase.total) {
+            newStatus = 'Lunas';
+          } else if (newPaid > 0) {
+            newStatus = 'Sebagian';
+          }
+
+          purchasesToUpdate.push({
+            id: opPurchase.id,
+            paidAmount: newPaid,
+            remainingAmount: newRemaining,
+            status: newStatus
+          });
+
+          paymentsToCreate.push({
+            id: `pay-adj-${Date.now()}-${idx}-${opPurchase.id}`,
+            purchaseId: opPurchase.id,
+            amount: -deductOnThis,
+            paymentDate: purchaseData.purchaseDate,
+            paymentMethod: 'Lainnya',
+            notes: `Kelebihan dana dipindahkan ke ${updatedPurchase.invoiceNumber}`,
+            receivedBy: currentUser?.name || 'Sistem',
+            createdAt: new Date().toISOString()
+          });
+
+          remainingOverpaymentToDeduct -= deductOnThis;
+        }
+      });
+    }
+
+    // Process previous invoice settlements
+    if (options?.settleInvoices && options.settleInvoices.length > 0) {
+      options.settleInvoices.forEach((settle, idx) => {
+        const unpaidPurchase = purchases.find(p => p.id === settle.purchaseId);
+        if (unpaidPurchase) {
+          const newPaid = unpaidPurchase.paidAmount + settle.amountToPay;
+          const newRemaining = unpaidPurchase.total - newPaid;
+          let newStatus: PurchaseStatus = 'Belum Lunas';
+          if (newPaid >= unpaidPurchase.total) {
+            newStatus = 'Lunas';
+          } else if (newPaid > 0) {
+            newStatus = 'Sebagian';
+          }
+
+          purchasesToUpdate.push({
+            id: unpaidPurchase.id,
+            paidAmount: newPaid,
+            remainingAmount: newRemaining,
+            status: newStatus
+          });
+
+          paymentsToCreate.push({
+            id: `pay-settle-${Date.now()}-${idx}-${unpaidPurchase.id}`,
+            purchaseId: unpaidPurchase.id,
+            amount: settle.amountToPay,
+            paymentDate: purchaseData.purchaseDate,
+            paymentMethod: settle.paymentMethod,
+            notes: `Pelunasan sisa bayar (Input gabungan saat transaksi ${updatedPurchase.invoiceNumber})`,
+            receivedBy: currentUser?.name || 'Sistem',
+            createdAt: new Date().toISOString()
+          });
+        }
+      });
+    }
+
     if (isOfflineFallback) {
-      setPurchases((prev) => prev.map((p) => (p.id === id ? updatedPurchase : p)));
+      setPurchases((prev) => {
+        let updated = prev.map((p) => (p.id === id ? updatedPurchase : p));
+        purchasesToUpdate.forEach(up => {
+          updated = updated.map(p => p.id === up.id ? { ...p, paidAmount: up.paidAmount, remainingAmount: up.remainingAmount, status: up.status } : p);
+        });
+        return updated;
+      });
+      if (paymentsToCreate.length > 0) {
+        setPayments((prev) => [...paymentsToCreate, ...prev]);
+      }
       await addSystemLog('EDIT_PEMBELIAN', `Invoice ${updatedPurchase.invoiceNumber}`);
     } else {
+      const batch = writeBatch(db);
+      
+      // Update existing purchase doc
+      batch.set(doc(db, 'purchases', id), updatedPurchase);
+
+      // Write updates for other purchases
+      purchasesToUpdate.forEach(up => {
+        batch.update(doc(db, 'purchases', up.id), {
+          paidAmount: up.paidAmount,
+          remainingAmount: up.remainingAmount,
+          status: up.status
+        });
+      });
+
+      // Write new payments
+      paymentsToCreate.forEach(p => {
+        batch.set(doc(db, 'payments', p.id), p);
+      });
+
       try {
-        await setDoc(doc(db, 'purchases', id), updatedPurchase);
+        await batch.commit();
         await addSystemLog('EDIT_PEMBELIAN', `Invoice ${updatedPurchase.invoiceNumber}`);
       } catch (error) {
-        handleFirestoreError(error, OperationType.WRITE, `purchases/${id}`);
+        handleFirestoreError(error, OperationType.WRITE, `purchases/${id}_and_batch_payments`);
       }
     }
   };

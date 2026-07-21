@@ -206,9 +206,21 @@ export default function Purchases() {
       tax: formTaxPercent,
       taxAmount: formTaxAmount,
       discount: formDiscount,
-      total: editingPurchaseId ? formTotal : formTotalBelanjaBersih,
+      total: formTotalBelanjaBersih,
       notes: formNotes
     };
+
+    const settleInvoicesList = Object.keys(selectedUnpaidInvoiceIds)
+      .filter(id => selectedUnpaidInvoiceIds[id])
+      .map(id => {
+        const p = purchases.find(p => p.id === id);
+        return {
+          purchaseId: id,
+          amountToPay: p ? p.remainingAmount : 0,
+          paymentMethod: unpaidInvoicePaymentMethods[id] || 'Transfer Bank'
+        };
+      })
+      .filter(item => item.amountToPay > 0);
 
     if (editingPurchaseId) {
       // Backend safety check:
@@ -217,21 +229,12 @@ export default function Purchases() {
         alert('Tidak bisa mengubah pembelian yang sudah mulai diangsur atau dilunasi!');
         return;
       }
-      updatePurchase(editingPurchaseId, purchasePayload);
+      updatePurchase(editingPurchaseId, purchasePayload, {
+        applyOverpaymentAmount: appliedOverpaymentValue,
+        settleInvoices: settleInvoicesList
+      });
       setSuccessMessage('Sukses memperbarui faktur pembelian barang!');
     } else {
-      const settleInvoicesList = Object.keys(selectedUnpaidInvoiceIds)
-        .filter(id => selectedUnpaidInvoiceIds[id])
-        .map(id => {
-          const p = purchases.find(p => p.id === id);
-          return {
-            purchaseId: id,
-            amountToPay: p ? p.remainingAmount : 0,
-            paymentMethod: unpaidInvoicePaymentMethods[id] || 'Transfer Bank'
-          };
-        })
-        .filter(item => item.amountToPay > 0);
-
       // Trigger action in StateContext
       addPurchase(purchasePayload, {
         applyOverpaymentAmount: appliedOverpaymentValue,
@@ -607,7 +610,7 @@ export default function Purchases() {
               </div>
 
               {/* Optional adjustments section for Overpayments and Underpayments */}
-              {!editingPurchaseId && (totalOverpaymentAvailable > 0 || selectedSupplierUnderpaidPurchases.length > 0) && (
+              {(totalOverpaymentAvailable > 0 || selectedSupplierUnderpaidPurchases.length > 0) && (
                 <div className="bg-indigo-50/50 rounded-2xl p-4 border border-indigo-100 space-y-3">
                   <h4 className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
                     <Percent className="w-4 h-4 text-indigo-600" />
@@ -882,7 +885,7 @@ export default function Purchases() {
                   </div>
 
                   {/* Underpayment settlements added to Total Belanja Bersih */}
-                  {!editingPurchaseId && totalUnderpaymentSettle > 0 && (
+                  {totalUnderpaymentSettle > 0 && (
                     <div className="flex items-center justify-between text-xs text-indigo-600 font-semibold animate-fade-in">
                       <span>Pelunasan Sisa Kurang Bayar (Tambahan)</span>
                       <span className="font-mono">+{formatRupiah(totalUnderpaymentSettle)}</span>
@@ -895,7 +898,7 @@ export default function Purchases() {
                     <span className="font-bold text-gray-900 font-mono text-[13px]">{formatRupiah(formTotalBelanjaBersih)}</span>
                   </div>
 
-                  {!editingPurchaseId && applyOverpayment && appliedOverpaymentValue > 0 && (
+                  {applyOverpayment && appliedOverpaymentValue > 0 && (
                     <>
                       <div className="flex items-center justify-between text-xs text-emerald-600 font-medium">
                         <span>Potongan Kelebihan Dana</span>

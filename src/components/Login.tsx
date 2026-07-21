@@ -97,7 +97,7 @@ export default function Login() {
                     setSelectedProfilePass('');
                   }
                 }}
-                placeholder="contoh: budi.admin@supplierku.com"
+                placeholder="contoh: Febrymal.Rifdillah@gmail.com"
                 className="w-full pl-10 pr-4 py-2 bg-gray-50/50 border border-gray-200 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-hidden font-mono text-gray-800"
               />
             </div>
