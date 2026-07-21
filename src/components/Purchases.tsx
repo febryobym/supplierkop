@@ -25,6 +25,30 @@ export default function Purchases() {
   const [supplierFilter, setSupplierFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+
+  const monthsList = [
+    { value: 'all', label: 'Semua Bulan' },
+    { value: '01', label: 'Januari' },
+    { value: '02', label: 'Februari' },
+    { value: '03', label: 'Maret' },
+    { value: '04', label: 'April' },
+    { value: '05', label: 'Mei' },
+    { value: '06', label: 'Juni' },
+    { value: '07', label: 'Juli' },
+    { value: '08', label: 'Agustus' },
+    { value: '09', label: 'September' },
+    { value: '10', label: 'Oktober' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'Desember' }
+  ];
+
+  const availableYears = Array.from(new Set(purchases.map(p => p.purchaseDate.split('-')[0]))).sort((a: string, b: string) => b.localeCompare(a)) as string[];
+  if (availableYears.length === 0) {
+    availableYears.push(new Date().getFullYear().toString());
+  }
+
   // Creation Form State
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formSupplierId, setFormSupplierId] = useState('');
@@ -341,7 +365,11 @@ export default function Purchases() {
     const matchesSupplier = supplierFilter === '' || p.supplierId === supplierFilter;
     const matchesStatus = statusFilter === '' || p.status === statusFilter;
 
-    return matchesSearch && matchesSupplier && matchesStatus;
+    const [year, month] = p.purchaseDate.split('-');
+    const matchesMonth = selectedMonth === 'all' || month === selectedMonth;
+    const matchesYear = selectedYear === 'all' || year === selectedYear;
+
+    return matchesSearch && matchesSupplier && matchesStatus && matchesMonth && matchesYear;
   });
 
   return (
@@ -396,9 +424,30 @@ export default function Purchases() {
         {/* Dropdowns */}
         <div className="flex gap-2 shrink-0 flex-wrap">
           <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="border border-gray-150 rounded-xl px-3 py-2 text-xs bg-white text-gray-600 outline-hidden cursor-pointer"
+          >
+            {monthsList.map(m => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="border border-gray-150 rounded-xl px-3 py-2 text-xs bg-white text-gray-600 outline-hidden cursor-pointer"
+          >
+            <option value="all">Semua Tahun</option>
+            {availableYears.map(yr => (
+              <option key={yr} value={yr}>{yr}</option>
+            ))}
+          </select>
+
+          <select
             value={supplierFilter}
             onChange={(e) => setSupplierFilter(e.target.value)}
-            className="border border-gray-150 rounded-xl px-3 py-2 text-xs bg-white text-gray-600 outline-hidden"
+            className="border border-gray-150 rounded-xl px-3 py-2 text-xs bg-white text-gray-600 outline-hidden cursor-pointer"
           >
             <option value="">Semua Supplier</option>
             {suppliers.map(s => (
@@ -409,13 +458,25 @@ export default function Purchases() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-150 rounded-xl px-3 py-2 text-xs bg-white text-gray-600 outline-hidden"
+            className="border border-gray-150 rounded-xl px-3 py-2 text-xs bg-white text-gray-600 outline-hidden cursor-pointer"
           >
             <option value="">Semua Status</option>
             <option value="Belum Lunas">Belum Lunas</option>
             <option value="Sebagian">Sebagian</option>
             <option value="Lunas">Lunas</option>
           </select>
+
+          {(selectedMonth !== 'all' || selectedYear !== 'all') && (
+            <button
+              onClick={() => {
+                setSelectedMonth('all');
+                setSelectedYear('all');
+              }}
+              className="text-xs text-rose-600 hover:text-rose-700 font-semibold underline cursor-pointer pl-1 self-center"
+            >
+              Reset Waktu
+            </button>
+          )}
         </div>
       </div>
 

@@ -15,6 +15,30 @@ export default function Payments() {
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+
+  const monthsList = [
+    { value: 'all', label: 'Semua Bulan' },
+    { value: '01', label: 'Januari' },
+    { value: '02', label: 'Februari' },
+    { value: '03', label: 'Maret' },
+    { value: '04', label: 'April' },
+    { value: '05', label: 'Mei' },
+    { value: '06', label: 'Juni' },
+    { value: '07', label: 'Juli' },
+    { value: '08', label: 'Agustus' },
+    { value: '09', label: 'September' },
+    { value: '10', label: 'Oktober' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'Desember' }
+  ];
+
+  const availableYears = Array.from(new Set(payments.map(p => p.paymentDate.split('-')[0]))).sort((a: string, b: string) => b.localeCompare(a)) as string[];
+  if (availableYears.length === 0) {
+    availableYears.push(new Date().getFullYear().toString());
+  }
+
   // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
@@ -190,9 +214,15 @@ export default function Payments() {
     const invoiceNum = parentInvoice?.invoiceNumber || '';
     const term = searchQuery.toLowerCase();
 
-    return sName.toLowerCase().includes(term) || 
-           invoiceNum.toLowerCase().includes(term) || 
-           (p.referenceNumber && p.referenceNumber.toLowerCase().includes(term));
+    const matchesSearch = sName.toLowerCase().includes(term) || 
+                          invoiceNum.toLowerCase().includes(term) || 
+                          (p.referenceNumber && p.referenceNumber.toLowerCase().includes(term));
+
+    const [year, month] = p.paymentDate.split('-');
+    const matchesMonth = selectedMonth === 'all' || month === selectedMonth;
+    const matchesYear = selectedYear === 'all' || year === selectedYear;
+
+    return matchesSearch && matchesMonth && matchesYear;
   });
 
   return (
@@ -233,17 +263,53 @@ export default function Payments() {
 
       {/* Control filter */}
       <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Cari nomor invoice, supplier, atau nomor referensi..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50/50 border border-gray-100 rounded-xl text-xs focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
-          />
+        <div className="flex flex-1 flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Cari nomor invoice, supplier, atau nomor referensi..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-50/50 border border-gray-100 rounded-xl text-xs focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
+            />
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="border border-gray-150 rounded-xl px-3 py-2 text-xs bg-white text-gray-600 outline-hidden cursor-pointer"
+            >
+              {monthsList.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="border border-gray-150 rounded-xl px-3 py-2 text-xs bg-white text-gray-600 outline-hidden cursor-pointer"
+            >
+              <option value="all">Semua Tahun</option>
+              {availableYears.map(yr => (
+                <option key={yr} value={yr}>{yr}</option>
+              ))}
+            </select>
+
+            {(selectedMonth !== 'all' || selectedYear !== 'all') && (
+              <button
+                onClick={() => {
+                  setSelectedMonth('all');
+                  setSelectedYear('all');
+                }}
+                className="text-xs text-rose-600 hover:text-rose-700 font-semibold underline cursor-pointer pl-1 self-center"
+              >
+                Reset Waktu
+              </button>
+            )}
+          </div>
         </div>
-        <div className="text-xs text-gray-500 flex items-center gap-1.5 font-mono">
+        <div className="text-xs text-gray-500 flex items-center gap-1.5 font-mono shrink-0">
           <span>Tercatat</span>
           <span className="font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md">{filteredPayments.length}</span>
           <span>transaksi pelunasan kas</span>
