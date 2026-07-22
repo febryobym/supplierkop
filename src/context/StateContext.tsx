@@ -69,7 +69,7 @@ const StateContext = createContext<StateContextType | undefined>(undefined);
 export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Sync state tracking
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isSyncCompleted, setIsSyncCompleted] = useState(false);
+  const [isSyncCompleted, setIsSyncCompleted] = useState(true);
 
   // Authentication State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -84,45 +84,21 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return null; // Don't auto login as admin on a new web/tab
   });
 
-  // Master lists preloaded from localStorage or defaults to eliminate visual flashing and empty layouts
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('sh_users');
-    const parsed = saved ? JSON.parse(saved) : PREDEFINED_USERS;
-    const list = Array.isArray(parsed) ? parsed.filter((u: User) => !['usr-1', 'usr-2', 'usr-3'].includes(u.id)) : PREDEFINED_USERS;
-    PREDEFINED_USERS.forEach((u) => {
-      if (!list.some((existing) => existing.id === u.id || existing.email.toLowerCase() === u.email.toLowerCase())) {
-        list.push(u);
-      }
-    });
-    return list;
-  });
-  const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
-    const saved = localStorage.getItem('sh_suppliers');
-    const parsed = saved ? JSON.parse(saved) : INITIAL_SUPPLIERS;
-    return Array.isArray(parsed) ? parsed.filter((s: Supplier) => !['spl-2', 'spl-3', 'spl-4'].includes(s.id)) : INITIAL_SUPPLIERS;
-  });
-  const [purchases, setPurchases] = useState<Purchase[]>(() => {
-    const saved = localStorage.getItem('sh_purchases');
-    const parsed = saved ? JSON.parse(saved) : INITIAL_PURCHASES;
-    return Array.isArray(parsed) ? parsed.filter((p: Purchase) => !['pur-1', 'pur-2', 'pur-3', 'pur-4'].includes(p.id)) : INITIAL_PURCHASES;
-  });
-  const [payments, setPayments] = useState<Payment[]>(() => {
-    const saved = localStorage.getItem('sh_payments');
-    const parsed = saved ? JSON.parse(saved) : INITIAL_PAYMENTS;
-    return Array.isArray(parsed) ? parsed.filter((pay: Payment) => !['pay-1', 'pay-2'].includes(pay.id)) : INITIAL_PAYMENTS;
-  });
-  const [logs, setLogs] = useState<ActivityLog[]>(() => {
-    const saved = localStorage.getItem('sh_logs');
-    const parsed = saved ? JSON.parse(saved) : INITIAL_LOGS;
-    return Array.isArray(parsed) ? parsed.filter((l: ActivityLog) => !['log-1', 'log-2', 'log-3'].includes(l.id)) : INITIAL_LOGS;
-  });
+  // Master lists initialized with master templates or empty arrays. 
+  // No localStorage caching is used for business transactional data to prevent duplication and discrepancy.
+  const [users, setUsers] = useState<User[]>(PREDEFINED_USERS);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   // Connectivity and Authentications
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isConnectionChecked, setIsConnectionChecked] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [isOfflineFallback, setIsOfflineFallback] = useState(false);
+  const isOfflineFallback = false;
+  const setIsOfflineFallback = (val: boolean) => {};
 
   const registerOfflineChange = () => {
     localStorage.setItem('sh_has_offline_changes', 'true');
@@ -341,27 +317,6 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     purgeDemoRecords();
   }, [isAuthReady, isConnectionChecked, isOfflineFallback]);
 
-  // Write state changes back to LocalStorage to guarantee robust offline caching and session durability
-  useEffect(() => {
-    localStorage.setItem('sh_users', JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
-    localStorage.setItem('sh_suppliers', JSON.stringify(suppliers));
-  }, [suppliers]);
-
-  useEffect(() => {
-    localStorage.setItem('sh_purchases', JSON.stringify(purchases));
-  }, [purchases]);
-
-  useEffect(() => {
-    localStorage.setItem('sh_payments', JSON.stringify(payments));
-  }, [payments]);
-
-  useEffect(() => {
-    localStorage.setItem('sh_logs', JSON.stringify(logs));
-  }, [logs]);
-
   // Database Initializer (Genesis Seeding)
   useEffect(() => {
     if (!isAuthReady || !isConnectionChecked || isOfflineFallback) return;
@@ -409,12 +364,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     seedDatabaseIfNeeded();
   }, [isAuthReady, isConnectionChecked, isOfflineFallback]);
 
-  // ONLINE SYNC: Robust, atomic, single-run offline-to-online sync
+  // ONLINE SYNC: Offline-to-online sync is disabled as we always write directly to Firestore.
   useEffect(() => {
-    if (!isAuthReady || !isConnectionChecked || isOfflineFallback) {
-      setIsSyncCompleted(false);
-      return;
-    }
+    setIsSyncCompleted(true);
+    return;
 
     const runOfflineSync = async () => {
       setIsSyncing(true);
