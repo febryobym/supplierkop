@@ -124,6 +124,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [authError, setAuthError] = useState<string | null>(null);
   const [isOfflineFallback, setIsOfflineFallback] = useState(false);
 
+  const registerOfflineChange = () => {
+    localStorage.setItem('sh_has_offline_changes', 'true');
+  };
+
   const checkFirestoreConnection = async () => {
     try {
       await getDocFromServer(doc(db, 'system_config', 'genesis'));
@@ -417,6 +421,13 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log("Starting offline-to-online data sync...");
 
       try {
+        const hasOfflineChanges = localStorage.getItem('sh_has_offline_changes') === 'true';
+        if (!hasOfflineChanges) {
+          console.log("No offline changes detected in localStorage. Skipping sync.");
+          setIsSyncCompleted(true);
+          return;
+        }
+
         // 1. Sync Users
         const savedUsersRaw = localStorage.getItem('sh_users');
         if (savedUsersRaw) {
@@ -604,6 +615,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         console.log("Offline-to-online sync completed successfully.");
+        localStorage.setItem('sh_has_offline_changes', 'false');
       } catch (err) {
         console.error("Error during offline sync:", err);
       } finally {
@@ -858,6 +870,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (isOfflineFallback) {
       setSuppliers((prev) => [...prev, newSupplier]);
+      registerOfflineChange();
       await addSystemLog('TAMBAH_SUPPLIER', `Supplier ${newSupplier.name} (${newSupplier.code})`);
     } else {
       try {
@@ -872,6 +885,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateSupplier = async (updated: Supplier) => {
     if (isOfflineFallback) {
       setSuppliers((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      registerOfflineChange();
       await addSystemLog('UBAH_SUPPLIER', `Supplier ${updated.name} (${updated.code})`);
     } else {
       try {
@@ -891,6 +905,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (supplier) {
       if (isOfflineFallback) {
         setSuppliers((prev) => prev.filter((s) => s.id !== id));
+        registerOfflineChange();
         addSystemLog('HAPUS_SUPPLIER', `Supplier ${supplier.name} (${supplier.code})`);
       } else {
         deleteDoc(doc(db, 'suppliers', id))
@@ -1041,6 +1056,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (paymentsToCreate.length > 0) {
         setPayments((prev) => [...paymentsToCreate, ...prev]);
       }
+      registerOfflineChange();
       await addSystemLog('TAMBAH_PEMBELIAN', `Invoice ${newPurchase.invoiceNumber}`);
     } else {
       const batch = writeBatch(db);
@@ -1255,6 +1271,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const filtered = prev.filter(p => !oldPayments.some(op => op.id === p.id));
         return [...paymentsToCreate, ...filtered];
       });
+      registerOfflineChange();
       await addSystemLog('EDIT_PEMBELIAN', `Invoice ${updatedPurchase.invoiceNumber}`);
     } else {
       const batch = writeBatch(db);
@@ -1313,6 +1330,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (isOfflineFallback) {
       setPurchases((prev) => prev.map((p) => (p.id === id ? updatedPurchase : p)));
+      registerOfflineChange();
       await addSystemLog('UPDATE_HARGA_JUAL', `Invoice ${existing.invoiceNumber}`);
     } else {
       try {
@@ -1332,6 +1350,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (target) {
       if (isOfflineFallback) {
         setPurchases((prev) => prev.filter((p) => p.id !== id));
+        registerOfflineChange();
         addSystemLog('HAPUS_PEMBELIAN', `Invoice ${target.invoiceNumber}`);
       } else {
         deleteDoc(doc(db, 'purchases', id))
@@ -1377,6 +1396,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             : p
         )
       );
+      registerOfflineChange();
       await addSystemLog('PROSES_BAYAR', `Pelunasan Rp ${paymentData.amount.toLocaleString('id-ID')} untuk ${purchase.invoiceNumber}`);
     } else {
       const batch = writeBatch(db);
@@ -1421,6 +1441,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             : p
         )
       );
+      registerOfflineChange();
       await addSystemLog('BATAL_BAYAR', `Pembayaran Rp ${payment.amount.toLocaleString('id-ID')} pada ref ${payment.referenceNumber || 'N/A'}`);
     } else {
       const batch = writeBatch(db);
