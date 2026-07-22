@@ -284,7 +284,7 @@ export default function Purchases() {
         const p = purchases.find(p => p.id === id);
         return {
           purchaseId: id,
-          amountToPay: p ? p.remainingAmount : 0,
+          amountToPay: p ? getOriginalRemainingAmount(p) : 0,
           paymentMethod: unpaidInvoicePaymentMethods[id] || 'Transfer Bank'
         };
       })
