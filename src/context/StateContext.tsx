@@ -281,33 +281,37 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // 2. Direct online purging of pre-seeded collections in Firestore
       if (isAuthReady && isConnectionChecked && !isOfflineFallback) {
         try {
-          const batch = writeBatch(db);
+          const genesisRef = doc(db, 'system_config', 'genesis');
+          const genesisSnap = await getDocFromServer(genesisRef);
+          const isAlreadyPurged = genesisSnap.exists() && genesisSnap.data()?.demoPurged === true;
           
-          // Old demo keys
-          const demoUserIds = ['usr-1', 'usr-2', 'usr-3'];
-          const demoSupplierIds = ['spl-2', 'spl-3', 'spl-4'];
-          const demoPurchaseIds = ['pur-1', 'pur-2', 'pur-3', 'pur-4'];
-          const demoPaymentIds = ['pay-1', 'pay-2'];
-          const demoLogIds = ['log-1', 'log-2', 'log-3'];
+          if (!isAlreadyPurged) {
+            console.log("Direct online purging of pre-seeded demo collections...");
+            const batch = writeBatch(db);
+            
+            // Old demo keys
+            const demoUserIds = ['usr-1', 'usr-2', 'usr-3'];
+            const demoSupplierIds = ['spl-2', 'spl-3', 'spl-4'];
+            const demoPurchaseIds = ['pur-1', 'pur-2', 'pur-3', 'pur-4'];
+            const demoPaymentIds = ['pay-1', 'pay-2'];
+            const demoLogIds = ['log-1', 'log-2', 'log-3'];
 
-          demoUserIds.forEach(id => batch.delete(doc(db, 'users', id)));
-          demoSupplierIds.forEach(id => batch.delete(doc(db, 'suppliers', id)));
-          demoPurchaseIds.forEach(id => batch.delete(doc(db, 'purchases', id)));
-          demoPaymentIds.forEach(id => batch.delete(doc(db, 'payments', id)));
-          demoLogIds.forEach(id => batch.delete(doc(db, 'logs', id)));
+            demoUserIds.forEach(id => batch.delete(doc(db, 'users', id)));
+            demoSupplierIds.forEach(id => batch.delete(doc(db, 'suppliers', id)));
+            demoPurchaseIds.forEach(id => batch.delete(doc(db, 'purchases', id)));
+            demoPaymentIds.forEach(id => batch.delete(doc(db, 'payments', id)));
+            demoLogIds.forEach(id => batch.delete(doc(db, 'logs', id)));
 
-          // Ensure the actual user always exists as Admin
-          batch.set(doc(db, 'users', 'usr-febry'), PREDEFINED_USERS[0]);
+            // Update genesis to mark clean slate
+            batch.set(genesisRef, {
+              initialized: true,
+              createdAt: genesisSnap.exists() ? (genesisSnap.data()?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+              demoPurged: true
+            });
 
-          // Update genesis to mark clean slate
-          batch.set(doc(db, 'system_config', 'genesis'), {
-            initialized: true,
-            createdAt: new Date().toISOString(),
-            demoPurged: true
-          });
-
-          await batch.commit();
-          console.log("Firestore database successfully cleared of all demo/sample records.");
+            await batch.commit();
+            console.log("Firestore database successfully cleared of all demo/sample records.");
+          }
         } catch (err) {
           console.warn("Firestore database demo cleanup check skipped or completed previously:", err);
         }
