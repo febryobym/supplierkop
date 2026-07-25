@@ -352,6 +352,34 @@ export default function Purchases() {
     exportToCSV('Pencatatan_Pembelian_Faktur', headers, data);
   };
 
+  const handleItemsCSVExport = () => {
+    const headers = ['Tanggal Pembelian', 'No Invoice', 'Nama Supplier', 'Nama Barang', 'Jumlah', 'Satuan', 'Harga Satuan', 'Total Harga', 'Harga Jual'];
+    const data: string[][] = [];
+    
+    // Process all purchases in chronological order
+    const sortedPurchases = [...purchases].sort((a, b) => new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime());
+    
+    sortedPurchases.forEach(p => {
+      const s = suppliers.find(s => s.id === p.supplierId);
+      const supplierName = s ? s.name : 'Unknown';
+      p.items.forEach(item => {
+        data.push([
+          p.purchaseDate,
+          p.invoiceNumber,
+          supplierName,
+          item.itemName,
+          item.quantity.toString(),
+          item.unit,
+          item.price.toString(),
+          item.total.toString(),
+          (item.sellingPrice || 0).toString()
+        ]);
+      });
+    });
+    
+    exportToCSV('Daftar_Barang_Masuk_Lengkap', headers, data);
+  };
+
   // Browser Print triggered helper
   const handlePrintInvoice = () => {
     window.print();
@@ -381,13 +409,23 @@ export default function Purchases() {
           <h1 className="text-xl font-bold text-gray-900 font-sans">Buku Pembelian Barang</h1>
           <p className="text-xs text-gray-500">Pencatatan nota belanja material, alokasi pajak, diskon, dan tempo hutang.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleCSVExport}
             className="flex items-center gap-2 border border-gray-200 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors cursor-pointer"
+            title="Ekspor daftar invoice/nota pembelian"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             <span>Ekspor Excel (.CSV)</span>
+          </button>
+
+          <button
+            onClick={handleItemsCSVExport}
+            className="flex items-center gap-2 border border-gray-200 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors cursor-pointer"
+            title="Ekspor rincian semua nama barang yang masuk"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-blue-600" />
+            <span>Ekspor Semua Item (.CSV)</span>
           </button>
           
           <button
