@@ -70,7 +70,8 @@ export default function Sales() {
     const costTotal = p.total;
     const salesTotal = p.items.reduce((sum, item) => {
       const sellPrice = item.sellingPrice !== undefined ? item.sellingPrice : item.price;
-      return sum + (item.quantity * sellPrice);
+      const soldQty = item.soldQuantity !== undefined ? item.soldQuantity : item.quantity;
+      return sum + (soldQty * sellPrice);
     }, 0);
     const profit = salesTotal - costTotal;
     const margin = costTotal > 0 ? (profit / costTotal) * 100 : 0;
@@ -82,7 +83,8 @@ export default function Sales() {
   const kpiSalesTotal = filteredPurchases.reduce((sum, p) => {
     return sum + p.items.reduce((sumI, item) => {
       const sellPrice = item.sellingPrice !== undefined ? item.sellingPrice : item.price;
-      return sumI + (item.quantity * sellPrice);
+      const soldQty = item.soldQuantity !== undefined ? item.soldQuantity : item.quantity;
+      return sumI + (soldQty * sellPrice);
     }, 0);
   }, 0);
   const kpiProfitTotal = kpiSalesTotal - kpiCostTotal;
@@ -93,16 +95,26 @@ export default function Sales() {
     // Deep copy items to avoid modifying state directly
     setTempItems(p.items.map(item => ({
       ...item,
-      sellingPrice: item.sellingPrice !== undefined ? item.sellingPrice : item.price // default to cost price if not set
+      sellingPrice: item.sellingPrice !== undefined ? item.sellingPrice : item.price, // default to cost price if not set
+      soldQuantity: item.soldQuantity !== undefined ? item.soldQuantity : item.quantity, // default to bought qty
+      soldUnit: item.soldUnit !== undefined ? item.soldUnit : item.unit, // default to bought unit
+      soldTo: item.soldTo !== undefined ? item.soldTo : '' // default to empty
     })));
     setErrorMessage('');
   };
 
-  const handleTempItemPriceChange = (itemId: string, val: string) => {
-    const num = parseFloat(val) || 0;
+  const handleTempItemFieldChange = (itemId: string, field: keyof PurchaseItem, val: string) => {
     setTempItems(prev => prev.map(item => {
       if (item.id === itemId) {
-        return { ...item, sellingPrice: num };
+        if (field === 'sellingPrice') {
+          return { ...item, sellingPrice: parseFloat(val) || 0 };
+        } else if (field === 'soldQuantity') {
+          return { ...item, soldQuantity: parseFloat(val) || 0 };
+        } else if (field === 'soldUnit') {
+          return { ...item, soldUnit: val };
+        } else if (field === 'soldTo') {
+          return { ...item, soldTo: val };
+        }
       }
       return item;
     }));
@@ -113,7 +125,7 @@ export default function Sales() {
 
     try {
       await updatePurchaseItems(editingPurchase.id, tempItems);
-      setSuccessMessage(`Berhasil memperbarui nilai jual untuk Invoice ${editingPurchase.invoiceNumber}`);
+      setSuccessMessage(`Berhasil memperbarui rincian penjualan untuk Invoice ${editingPurchase.invoiceNumber}`);
       setEditingPurchase(null);
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err: any) {
@@ -146,7 +158,57 @@ export default function Sales() {
         p.status
       ];
     });
-    exportToCSV('Buku_Penjualan_GMP', headers, data);
+    exportToCSV('Buku_Penjualan_GMP_Rekap', headers, data);
+  };
+
+  const handleDetailedCSVExport = () => {
+    const headers = [
+      'Tanggal Pembelian',
+      'No Invoice',
+      'Supplier',
+      'Nama Barang',
+      'Qty Beli',
+      'Satuan Beli',
+      'Harga Beli',
+      'Total Beli',
+      'Harga Jual',
+      'Qty Terjual',
+      'Satuan Terjual',
+      'Total Penjualan',
+      'Dijual Ke (Tujuan)',
+      'Profit Barang'
+    ];
+    const data: string[][] = [];
+    filteredPurchases.forEach(p => {
+      const s = suppliers.find(s => s.id === p.supplierId);
+      p.items.forEach(item => {
+        const sellPrice = item.sellingPrice !== undefined ? item.sellingPrice : item.price;
+        const soldQty = item.soldQuantity !== undefined ? item.soldQuantity : item.quantity;
+        const soldUnit = item.soldUnit !== undefined ? item.soldUnit : item.unit;
+        const soldTo = item.soldTo || '-';
+        const itemSalesTotal = soldQty * sellPrice;
+        const itemCostTotal = item.total;
+        const itemProfit = itemSalesTotal - itemCostTotal;
+
+        data.push([
+          p.purchaseDate,
+          p.invoiceNumber,
+          s?.name || 'N/A',
+          item.itemName,
+          item.quantity.toString(),
+          item.unit,
+          item.price.toString(),
+          itemCostTotal.toString(),
+          sellPrice.toString(),
+          soldQty.toString(),
+          soldUnit,
+          itemSalesTotal.toString(),
+          soldTo,
+          itemProfit.toString()
+        ]);
+      });
+    });
+    exportToCSV('Rincian_Penjualan_GMP', headers, data);
   };
 
   return (
@@ -157,13 +219,22 @@ export default function Sales() {
           <h1 className="text-xl font-bold text-gray-900 font-sans">Buku Penjualan & Margin Keuntungan</h1>
           <p className="text-xs text-gray-500 font-sans">Rekap nilai jual barang koperasi, hitungan omset proyeksi, dan laba kotor penjualan.</p>
         </div>
-        <div>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleCSVExport}
             className="flex items-center gap-2 border border-gray-200 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors cursor-pointer"
+            title="Ekspor rekap tingkat invoice"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Ekspor Buku Penjualan (.CSV)</span>
+            <span>Ekspor Rekap (.CSV)</span>
+          </button>
+          <button
+            onClick={handleDetailedCSVExport}
+            className="flex items-center gap-2 border border-gray-200 px-3.5 py-2 rounded-xl text-xs font-semibold text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors cursor-pointer"
+            title="Ekspor rincian tiap barang terjual"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+            <span>Ekspor Rincian Penjualan (.CSV)</span>
           </button>
         </div>
       </div>
@@ -413,11 +484,11 @@ export default function Sales() {
       {/* MODAL 1: EDIT SELLING PRICES */}
       {editingPurchase && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+          <div className="bg-white rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             {/* Modal Header */}
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-indigo-950 text-white">
               <div>
-                <h3 className="text-md font-bold">Atur Nilai Jual Barang</h3>
+                <h3 className="text-md font-bold">Atur Nilai & Rincian Penjualan</h3>
                 <p className="text-[11px] text-gray-300 mt-0.5">Invoice: {editingPurchase.invoiceNumber}</p>
               </div>
               <button 
@@ -438,41 +509,90 @@ export default function Sales() {
 
               <div className="space-y-3">
                 <p className="text-xs text-gray-500 font-sans">
-                  Tentukan harga jual untuk masing-masing item belanja guna menghitung proyeksi margin dan keuntungan koperasi.
+                  Tentukan harga jual, jumlah barang yang terjual beserta satuannya, serta ke mana barang tersebut disalurkan/dijual untuk menghitung laporan laba kotor yang presisi.
                 </p>
 
-                <div className="divide-y divide-gray-100 border border-gray-100 rounded-2xl overflow-hidden">
-                  <div className="grid grid-cols-12 bg-gray-50 p-3 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                    <div className="col-span-4">Nama Barang</div>
-                    <div className="col-span-2 text-center">Jumlah</div>
-                    <div className="col-span-3 text-right">Harga Beli</div>
-                    <div className="col-span-3 text-right">Harga Jual (IDR)</div>
-                  </div>
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                  {tempItems.map((item) => {
+                    const defaultSellingPrice = item.sellingPrice !== undefined ? item.sellingPrice : item.price;
+                    const defaultSoldQty = item.soldQuantity !== undefined ? item.soldQuantity : item.quantity;
+                    const defaultSoldUnit = item.soldUnit !== undefined ? item.soldUnit : item.unit;
+                    const defaultSoldTo = item.soldTo !== undefined ? item.soldTo : '';
 
-                  <div className="divide-y divide-gray-100 max-h-[300px] overflow-y-auto">
-                    {tempItems.map((item) => (
-                      <div key={item.id} className="grid grid-cols-12 p-3 text-xs items-center">
-                        <div className="col-span-4 font-medium text-gray-800 truncate pr-2" title={item.itemName}>
-                          {item.itemName}
+                    return (
+                      <div key={item.id} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 space-y-3.5 hover:border-indigo-100 hover:bg-indigo-50/5 transition-all">
+                        {/* Item Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <div>
+                            <span className="inline-block bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-md mb-1">
+                              Barang Belanja
+                            </span>
+                            <h4 className="text-xs font-bold text-gray-900 font-sans">{item.itemName}</h4>
+                            <p className="text-[10px] text-gray-500 mt-0.5">
+                              Stok Masuk: <span className="font-mono text-gray-700 font-semibold">{item.quantity} {item.unit}</span> @ <span className="font-mono text-gray-700 font-semibold">{formatRupiah(item.price)}</span> (Total: {formatRupiah(item.total)})
+                            </p>
+                          </div>
+                          <div className="sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-dashed border-gray-200">
+                            <span className="text-[10px] text-gray-400 block font-semibold uppercase tracking-wider">Subtotal Penjualan</span>
+                            <span className="text-xs font-bold text-indigo-950 font-mono">
+                              {formatRupiah(defaultSoldQty * defaultSellingPrice)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="col-span-2 text-center text-gray-500 font-mono">
-                          {item.quantity} {item.unit}
-                        </div>
-                        <div className="col-span-3 text-right font-mono text-gray-600">
-                          {formatRupiah(item.price)}
-                        </div>
-                        <div className="col-span-3 pl-3">
-                          <input
-                            type="number"
-                            value={item.sellingPrice || ''}
-                            onChange={(e) => handleTempItemPriceChange(item.id, e.target.value)}
-                            placeholder="Harga Jual"
-                            className="w-full text-right px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                          />
+
+                        {/* Input Fields */}
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2.5 border-t border-dashed border-gray-200/60">
+                          {/* Harga Jual */}
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Harga Jual (IDR/Unit)</label>
+                            <input
+                              type="number"
+                              value={item.sellingPrice !== undefined ? item.sellingPrice : ''}
+                              onChange={(e) => handleTempItemFieldChange(item.id, 'sellingPrice', e.target.value)}
+                              placeholder="Harga Jual"
+                              className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                            />
+                          </div>
+
+                          {/* Qty Terjual */}
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Qty Terjual</label>
+                            <input
+                              type="number"
+                              value={item.soldQuantity !== undefined ? item.soldQuantity : ''}
+                              onChange={(e) => handleTempItemFieldChange(item.id, 'soldQuantity', e.target.value)}
+                              placeholder={`Maks ${item.quantity}`}
+                              className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                            />
+                          </div>
+
+                          {/* Satuan Terjual */}
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Satuan Terjual</label>
+                            <input
+                              type="text"
+                              value={item.soldUnit || ''}
+                              onChange={(e) => handleTempItemFieldChange(item.id, 'soldUnit', e.target.value)}
+                              placeholder={item.unit}
+                              className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs font-sans focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                            />
+                          </div>
+
+                          {/* Dijual Ke */}
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Dijual Ke (Tujuan)</label>
+                            <input
+                              type="text"
+                              value={item.soldTo || ''}
+                              onChange={(e) => handleTempItemFieldChange(item.id, 'soldTo', e.target.value)}
+                              placeholder="Klien / Proyek / Unit"
+                              className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs font-sans focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                            />
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -485,16 +605,24 @@ export default function Sales() {
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-gray-500 font-semibold uppercase block">Total Jual</span>
+                  <span className="text-[10px] text-gray-500 font-semibold uppercase block">Proyeksi Omset</span>
                   <span className="text-xs font-bold text-indigo-900 font-mono">
-                    {formatRupiah(tempItems.reduce((acc, item) => acc + (item.quantity * (item.sellingPrice || 0)), 0))}
+                    {formatRupiah(tempItems.reduce((acc, item) => {
+                      const qty = item.soldQuantity !== undefined ? item.soldQuantity : item.quantity;
+                      const price = item.sellingPrice !== undefined ? item.sellingPrice : item.price;
+                      return acc + (qty * price);
+                    }, 0))}
                   </span>
                 </div>
                 <div>
                   <span className="text-[10px] text-gray-500 font-semibold uppercase block">Margin Keuntungan</span>
                   {(() => {
                     const cost = editingPurchase.total;
-                    const sell = tempItems.reduce((acc, item) => acc + (item.quantity * (item.sellingPrice || 0)), 0);
+                    const sell = tempItems.reduce((acc, item) => {
+                      const qty = item.soldQuantity !== undefined ? item.soldQuantity : item.quantity;
+                      const price = item.sellingPrice !== undefined ? item.sellingPrice : item.price;
+                      return acc + (qty * price);
+                    }, 0);
                     const profit = sell - cost;
                     const margin = cost > 0 ? (profit / cost) * 100 : 0;
                     return (
@@ -519,7 +647,7 @@ export default function Sales() {
                 onClick={handleSaveSellingPrices}
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
               >
-                Simpan Nilai Jual
+                Simpan Penjualan
               </button>
             </div>
           </div>
@@ -529,10 +657,10 @@ export default function Sales() {
       {/* MODAL 2: DETAIL VIEWER */}
       {viewingPurchase && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+          <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-gray-900">Rincian Barang & Harga</h3>
+                <h3 className="text-sm font-bold text-gray-900">Rincian Barang & Laba Penjualan</h3>
                 <p className="text-[10px] text-gray-400 font-mono mt-0.5">{viewingPurchase.invoiceNumber}</p>
               </div>
               <button 
@@ -544,39 +672,69 @@ export default function Sales() {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-4 flex-1">
-              <div className="space-y-2">
-                <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden text-xs">
-                  <div className="grid grid-cols-12 bg-gray-50 p-2.5 font-semibold text-gray-500">
-                    <div className="col-span-5">Nama Barang</div>
-                    <div className="col-span-2 text-center">Qty</div>
-                    <div className="col-span-2 text-right">Harga Beli</div>
-                    <div className="col-span-3 text-right">Harga Jual</div>
-                  </div>
-                  {viewingPurchase.items.map((item) => {
-                    const sell = item.sellingPrice !== undefined ? item.sellingPrice : item.price;
-                    const diff = sell - item.price;
-                    return (
-                      <div key={item.id} className="grid grid-cols-12 p-2.5 items-center">
-                        <div className="col-span-5 text-gray-800 font-medium truncate pr-1">{item.itemName}</div>
-                        <div className="col-span-2 text-center text-gray-500 font-mono">{item.quantity} {item.unit}</div>
-                        <div className="col-span-2 text-right text-gray-600 font-mono">{formatRupiah(item.price)}</div>
-                        <div className="col-span-3 text-right font-mono text-indigo-950 font-semibold">
-                          <div>{formatRupiah(sell)}</div>
-                          <div className={`text-[9px] font-bold ${diff >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {diff >= 0 ? `+${formatRupiah(diff)}` : formatRupiah(diff)}
-                          </div>
+              <div className="space-y-3">
+                {viewingPurchase.items.map((item) => {
+                  const sell = item.sellingPrice !== undefined ? item.sellingPrice : item.price;
+                  const soldQty = item.soldQuantity !== undefined ? item.soldQuantity : item.quantity;
+                  const soldUnit = item.soldUnit !== undefined ? item.soldUnit : item.unit;
+                  const soldTo = item.soldTo || '-';
+                  const itemSalesTotal = soldQty * sell;
+                  const itemCostTotal = item.total;
+                  const itemProfit = itemSalesTotal - itemCostTotal;
+
+                  return (
+                    <div key={item.id} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 space-y-3">
+                      {/* Header info */}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="text-xs font-bold text-gray-900">{item.itemName}</h4>
+                          <p className="text-[10px] text-gray-400 mt-0.5">Beli: {item.quantity} {item.unit} @ {formatRupiah(item.price)}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[9px] text-gray-400 uppercase tracking-wider font-semibold block">Total Modal</span>
+                          <span className="text-xs font-semibold text-gray-700 font-mono">{formatRupiah(itemCostTotal)}</span>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {/* Sold details info */}
+                      <div className="grid grid-cols-3 gap-2 bg-white p-2.5 rounded-xl border border-gray-100 text-[11px]">
+                        <div>
+                          <span className="text-[9px] text-gray-400 font-medium block">Qty Terjual</span>
+                          <span className="font-semibold text-gray-800 font-mono">{soldQty} {soldUnit}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-gray-400 font-medium block">Harga Jual / Unit</span>
+                          <span className="font-semibold text-gray-800 font-mono">{formatRupiah(sell)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-gray-400 font-medium block">Total Penjualan</span>
+                          <span className="font-semibold text-indigo-950 font-mono">{formatRupiah(itemSalesTotal)}</span>
+                        </div>
+                      </div>
+
+                      {/* Extra info (Dijual ke, Profit) */}
+                      <div className="flex justify-between items-center text-[10px] pt-2 border-t border-dashed border-gray-200">
+                        <div>
+                          <span className="text-gray-400 font-medium">Dijual ke: </span>
+                          <span className="font-semibold text-gray-700">{soldTo}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 font-medium">Laba Barang: </span>
+                          <span className={`font-bold font-mono ${itemProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {itemProfit >= 0 ? `+${formatRupiah(itemProfit)}` : formatRupiah(itemProfit)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
               <button
                 onClick={() => setViewingPurchase(null)}
-                className="px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 rounded-xl text-xs font-semibold cursor-pointer"
+                className="px-5 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-semibold cursor-pointer"
               >
                 Tutup
               </button>

@@ -35,6 +35,9 @@ export interface PurchaseItem {
   price: number;
   total: number;
   sellingPrice?: number;
+  soldQuantity?: number;
+  soldUnit?: string;
+  soldTo?: string;
 }
 
 export type PurchaseStatus = 'Belum Lunas' | 'Sebagian' | 'Lunas';

@@ -10,6 +10,7 @@ import {
   collection, 
   doc, 
   setDoc, 
+  updateDoc,
   deleteDoc, 
   onSnapshot, 
   writeBatch,
@@ -700,6 +701,54 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       unsubLogs();
     };
   }, [isAuthReady, isConnectionChecked, isOfflineFallback, isSyncCompleted]);
+
+  // Auto-reconcile purchase paidAmount, remainingAmount & status with actual payments list
+  useEffect(() => {
+    if (purchases.length === 0) return;
+
+    let hasMismatch = false;
+    const reconciledPurchases = purchases.map((p) => {
+      const calculatedPaid = payments
+        .filter((pay) => pay.purchaseId === p.id)
+        .reduce((sum, pay) => sum + pay.amount, 0);
+      
+      const calculatedRemaining = Math.max(0, p.total - calculatedPaid);
+      let calculatedStatus: PurchaseStatus = 'Belum Lunas';
+      if (calculatedPaid >= p.total) {
+        calculatedStatus = 'Lunas';
+      } else if (calculatedPaid > 0) {
+        calculatedStatus = 'Sebagian';
+      }
+
+      if (
+        p.paidAmount !== calculatedPaid ||
+        p.remainingAmount !== calculatedRemaining ||
+        p.status !== calculatedStatus
+      ) {
+        hasMismatch = true;
+        if (!isOfflineFallback) {
+          updateDoc(doc(db, 'purchases', p.id), {
+            paidAmount: calculatedPaid,
+            remainingAmount: calculatedRemaining,
+            status: calculatedStatus
+          }).catch((err) => {
+            console.error('Failed to sync reconciled purchase to Firestore:', err);
+          });
+        }
+        return {
+          ...p,
+          paidAmount: calculatedPaid,
+          remainingAmount: calculatedRemaining,
+          status: calculatedStatus
+        };
+      }
+      return p;
+    });
+
+    if (hasMismatch) {
+      setPurchases(reconciledPurchases);
+    }
+  }, [payments, isOfflineFallback]);
 
   // Compute Warnings Notification
   useEffect(() => {
