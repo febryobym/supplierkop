@@ -71,7 +71,9 @@ interface AggregatedProduct {
   category: string;
   unit: string;
   notes?: string;
-  totalQty: number;
+  totalQty: number; // Total Terbeli
+  totalSoldQty: number; // Total Terjual
+  currentStock: number; // Stok Saat Ini (totalQty - totalSoldQty)
   totalCost: number;
   purchaseCount: number;
   latestPurchaseDate: string;
@@ -97,7 +99,7 @@ export default function Products() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [sortBy, setSortBy] = useState<'name' | 'code' | 'qty' | 'cost' | 'latestPrice'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'code' | 'qty' | 'stock' | 'cost' | 'latestPrice'>('name');
 
   // Modal states
   const [editingProduct, setEditingProduct] = useState<AggregatedProduct | null>(null);
@@ -145,6 +147,8 @@ export default function Products() {
             unit: storedProd?.unit || item.unit || 'Pcs',
             notes: storedProd?.notes || '',
             totalQty: 0,
+            totalSoldQty: 0,
+            currentStock: 0,
             totalCost: 0,
             purchaseCount: 0,
             latestPurchaseDate: purchase.purchaseDate,
@@ -158,6 +162,7 @@ export default function Products() {
 
         const prod = productMap[cleanKey];
         prod.totalQty += item.quantity;
+        prod.totalSoldQty += (item.soldQuantity !== undefined ? item.soldQuantity : 0);
         prod.totalCost += item.total;
         prod.purchaseCount += 1;
         prod.latestPurchaseDate = purchase.purchaseDate;
@@ -184,8 +189,9 @@ export default function Products() {
       });
     });
 
-    // Compute average price and convert to array
+    // Compute average price, current stock, and convert to array
     const result = Object.values(productMap).map((prod) => {
+      prod.currentStock = prod.totalQty - prod.totalSoldQty;
       prod.avgPrice = prod.totalQty > 0 ? prod.totalCost / prod.totalQty : prod.latestPrice;
       // Reverse history so newest purchases appear on top
       prod.history.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
@@ -220,6 +226,7 @@ export default function Products() {
       .sort((a, b) => {
         if (sortBy === 'name') return a.itemName.localeCompare(b.itemName);
         if (sortBy === 'code') return a.itemCode.localeCompare(b.itemCode);
+        if (sortBy === 'stock') return b.currentStock - a.currentStock;
         if (sortBy === 'qty') return b.totalQty - a.totalQty;
         if (sortBy === 'cost') return b.totalCost - a.totalCost;
         if (sortBy === 'latestPrice') return b.latestPrice - a.latestPrice;
@@ -231,6 +238,7 @@ export default function Products() {
   const totalProductsCount = aggregatedProducts.length;
   const totalCategoriesCount = availableCategories.length;
   const totalPurchasedVolume = aggregatedProducts.reduce((sum, p) => sum + p.totalQty, 0);
+  const totalCurrentStockVolume = aggregatedProducts.reduce((sum, p) => sum + p.currentStock, 0);
   const totalPurchasedValue = aggregatedProducts.reduce((sum, p) => sum + p.totalCost, 0);
 
   // Open Edit Modal
@@ -268,8 +276,10 @@ export default function Products() {
       'Nama Barang',
       'Kategori',
       'Satuan',
-      'Frekuensi Pembelian',
+      'Stok Saat Ini',
       'Total Qty Terbeli',
+      'Total Qty Terjual',
+      'Frekuensi Pembelian',
       'Harga Beli Terbaru (IDR)',
       'Harga Beli Rata-Rata (IDR)',
       'Harga Jual Terbaru (IDR)',
@@ -282,8 +292,10 @@ export default function Products() {
       p.itemName,
       p.category,
       p.unit,
-      p.purchaseCount.toString(),
+      p.currentStock.toString(),
       p.totalQty.toString(),
+      p.totalSoldQty.toString(),
+      p.purchaseCount.toString(),
       p.latestPrice.toString(),
       Math.round(p.avgPrice).toString(),
       p.latestSellingPrice.toString(),
@@ -367,15 +379,15 @@ export default function Products() {
           </div>
         </div>
 
-        {/* Card 3: Total Qty Terbeli */}
+        {/* Card 3: Total Stok Tersisa (Saat Ini) */}
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
             <Boxes className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider font-sans">Total Stok Terbeli</p>
-            <h3 className="text-xl font-extrabold text-gray-900 font-sans mt-0.5">{totalPurchasedVolume.toLocaleString('id-ID')} Unit</h3>
-            <p className="text-[10px] text-gray-400 mt-0.5">Akumulasi Qty Masuk</p>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider font-sans">Stok Tersisa Saat Ini</p>
+            <h3 className="text-xl font-extrabold text-emerald-950 font-sans mt-0.5">{totalCurrentStockVolume.toLocaleString('id-ID')} Unit</h3>
+            <p className="text-[10px] text-gray-400 mt-0.5">Total Terbeli: {totalPurchasedVolume.toLocaleString('id-ID')} Unit</p>
           </div>
         </div>
 
@@ -443,6 +455,7 @@ export default function Products() {
             >
               <option value="name">Urut: Nama Barang (A-Z)</option>
               <option value="code">Urut: Kode Barang</option>
+              <option value="stock">Urut: Stok Tersisa (Terbanyak)</option>
               <option value="qty">Urut: Stok Terbeli Terbanyak</option>
               <option value="cost">Urut: Nilai Belanja Terbesar</option>
               <option value="latestPrice">Urut: Harga Beli Terbaru</option>
@@ -474,11 +487,12 @@ export default function Products() {
                   <th className="py-3.5 px-4 font-sans">Nama Barang</th>
                   <th className="py-3.5 px-4 font-sans">Kategori</th>
                   <th className="py-3.5 px-4 font-sans text-center">Satuan</th>
+                  <th className="py-3.5 px-4 font-sans text-right">Stok Saat Ini</th>
                   <th className="py-3.5 px-4 font-sans text-right">Harga Beli Terbaru</th>
                   <th className="py-3.5 px-4 font-sans text-right">Harga Beli Rata-Rata</th>
                   <th className="py-3.5 px-4 font-sans text-right">Harga Jual Saat Ini</th>
                   <th className="py-3.5 px-4 font-sans text-right">Siskaperbapo Kediri</th>
-                  <th className="py-3.5 px-4 font-sans text-right">Total Akumulasi Terbeli</th>
+                  <th className="py-3.5 px-4 font-sans text-right">Total Terbeli</th>
                   <th className="py-3.5 px-4 font-sans text-center">Aksi</th>
                 </tr>
               </thead>
@@ -521,6 +535,24 @@ export default function Products() {
                       {/* Satuan */}
                       <td className="py-3.5 px-4 align-middle text-center font-mono text-gray-600">
                         {p.unit}
+                      </td>
+
+                      {/* Stok Saat Ini */}
+                      <td className="py-3.5 px-4 align-middle text-right font-mono">
+                        <div>
+                          {p.currentStock <= 0 ? (
+                            <span className="inline-flex items-center gap-1 font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100 text-[11px]">
+                              Habis ({p.currentStock} {p.unit})
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 text-[11px]">
+                              {p.currentStock.toLocaleString('id-ID')} {p.unit}
+                            </span>
+                          )}
+                          <span className="text-[9px] text-gray-400 font-sans block mt-0.5">
+                            Beli: {p.totalQty.toLocaleString('id-ID')} | Jual: {p.totalSoldQty.toLocaleString('id-ID')}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Harga Beli Terbaru */}
@@ -755,18 +787,24 @@ export default function Products() {
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-4 flex-1">
               {/* Product Quick Stats */}
-              <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 text-xs">
                 <div>
-                  <span className="text-[10px] text-gray-400 font-medium block">Total Pembelian</span>
+                  <span className="text-[10px] text-gray-400 font-medium block">Total Terbeli</span>
                   <span className="font-extrabold text-gray-900 font-mono">{historyProduct.totalQty} {historyProduct.unit}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-400 font-medium block">Total Terjual</span>
+                  <span className="font-extrabold text-amber-600 font-mono">{historyProduct.totalSoldQty} {historyProduct.unit}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-400 font-medium block">Stok Saat Ini</span>
+                  <span className={`font-extrabold font-mono ${historyProduct.currentStock <= 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                    {historyProduct.currentStock} {historyProduct.unit}
+                  </span>
                 </div>
                 <div>
                   <span className="text-[10px] text-gray-400 font-medium block">Harga Beli Terbaru</span>
                   <span className="font-extrabold text-indigo-950 font-mono">{formatRupiah(historyProduct.latestPrice)}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-gray-400 font-medium block">Harga Rata-Rata</span>
-                  <span className="font-extrabold text-gray-700 font-mono">{formatRupiah(Math.round(historyProduct.avgPrice))}</span>
                 </div>
               </div>
 
