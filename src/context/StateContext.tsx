@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { User, Supplier, Purchase, PurchaseItem, Payment, ActivityLog, Notification, UserRole, PurchaseStatus, PaymentMethod } from '../types';
+import { User, Supplier, Purchase, PurchaseItem, Payment, ActivityLog, Notification, UserRole, PurchaseStatus, PaymentMethod, Product } from '../types';
 import { INITIAL_SUPPLIERS, INITIAL_PURCHASES, INITIAL_PAYMENTS, INITIAL_LOGS, PREDEFINED_USERS } from '../data';
 import { 
   collection, 
@@ -28,6 +28,7 @@ interface StateContextType {
   payments: Payment[];
   logs: ActivityLog[];
   notifications: Notification[];
+  products: Product[];
   authError: string | null;
   isOfflineFallback: boolean;
   isSyncing: boolean;
@@ -36,6 +37,7 @@ interface StateContextType {
   addSupplier: (supplier: Omit<Supplier, 'id'>) => void;
   updateSupplier: (supplier: Supplier) => void;
   deleteSupplier: (id: string) => boolean;
+  updateProduct: (product: Product) => void;
   addPurchase: (
     purchase: Omit<Purchase, 'id' | 'createdBy' | 'createdAt' | 'paidAmount' | 'remainingAmount' | 'status'>,
     options?: {
@@ -93,6 +95,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [payments, setPayments] = useState<Payment[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   // Connectivity and Authentications
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -693,12 +696,24 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       handleFirestoreError(error, OperationType.LIST, 'logs');
     });
 
+    // 6. Sync Products
+    const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+      const list: Product[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() } as Product);
+      });
+      setProducts(list);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'products');
+    });
+
     return () => {
       unsubUsers();
       unsubSuppliers();
       unsubPurchases();
       unsubPayments();
       unsubLogs();
+      unsubProducts();
     };
   }, [isAuthReady, isConnectionChecked, isOfflineFallback, isSyncCompleted]);
 
@@ -1702,6 +1717,28 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
 
+  const updateProduct = (product: Product) => {
+    setProducts((prev) => {
+      const idx = prev.findIndex((p) => p.id === product.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], ...product, updatedAt: new Date().toISOString() };
+        return copy;
+      }
+      return [...prev, { ...product, updatedAt: new Date().toISOString() }];
+    });
+
+    if (!isOfflineFallback) {
+      setDoc(doc(db, 'products', product.id), {
+        ...product,
+        updatedAt: new Date().toISOString()
+      }, { merge: true }).catch((err) => {
+        console.error('Failed to update product in Firestore:', err);
+      });
+    }
+    addSystemLog('Update Produk', `Pembaruan data produk "${product.itemName}" (Kode: ${product.itemCode}, Kategori: ${product.category})`);
+  };
+
   return (
     <StateContext.Provider
       value={{
@@ -1712,6 +1749,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         payments,
         logs,
         notifications,
+        products,
         authError,
         isOfflineFallback,
         isSyncing,
@@ -1720,6 +1758,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addSupplier,
         updateSupplier,
         deleteSupplier,
+        updateProduct,
         addPurchase,
         updatePurchase,
         updatePurchaseItems,

@@ -4,6 +4,8 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Suppliers from './components/Suppliers';
 import Purchases from './components/Purchases';
+import Products from './components/Products';
+import SiskaperbapoKediri from './components/SiskaperbapoKediri';
 import Sales from './components/Sales';
 import Payments from './components/Payments';
 import HutangLaporan from './components/HutangLaporan';
@@ -13,6 +15,8 @@ import {
   LayoutDashboard, 
   Truck, 
   FileText, 
+  Package,
+  Store,
   CreditCard, 
   TrendingUp, 
   DollarSign,
@@ -48,6 +52,8 @@ function AppContent() {
     { id: 'dashboard', label: 'Dasbor Analitik', icon: LayoutDashboard, roles: ['Admin', 'Manager', 'Staff'] },
     { id: 'supplier', label: 'Database Supplier', icon: Truck, roles: ['Admin', 'Manager', 'Staff'] },
     { id: 'pembelian', label: 'Buku Pembelian', icon: FileText, roles: ['Admin', 'Manager', 'Staff'] },
+    { id: 'produk', label: 'List Produk', icon: Package, roles: ['Admin', 'Manager', 'Staff'] },
+    { id: 'siskaperbapo', label: 'Harga Siskaperbapo Kediri', icon: Store, roles: ['Admin', 'Manager', 'Staff'] },
     { id: 'buku-penjualan', label: 'Buku Penjualan', icon: DollarSign, roles: ['Admin'] },
     { id: 'pembayaran', label: 'Mutasi Kas / Bayar', icon: CreditCard, roles: ['Admin', 'Manager', 'Staff'] },
     { id: 'laporan-hutang', label: 'Laporan Hutang', icon: TrendingUp, roles: ['Admin', 'Manager', 'Staff'] },
@@ -368,6 +374,8 @@ function AppContent() {
           {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
           {activeTab === 'supplier' && <Suppliers />}
           {activeTab === 'pembelian' && <Purchases />}
+          {activeTab === 'produk' && <Products />}
+          {activeTab === 'siskaperbapo' && <SiskaperbapoKediri />}
           {activeTab === 'buku-penjualan' && <Sales />}
           {activeTab === 'pembayaran' && <Payments />}
           {activeTab === 'laporan-hutang' && <HutangLaporan />}

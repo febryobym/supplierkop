@@ -27,6 +27,16 @@ export interface Supplier {
   bankAccountHolder: string;
 }
 
+export interface Product {
+  id: string;
+  itemName: string;
+  itemCode: string;
+  category: string;
+  unit?: string;
+  notes?: string;
+  updatedAt?: string;
+}
+
 export interface PurchaseItem {
   id: string;
   itemName: string;
