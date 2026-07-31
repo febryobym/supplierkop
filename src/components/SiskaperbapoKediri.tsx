@@ -21,6 +21,7 @@ import {
   Info, 
   MapPin, 
   Edit3, 
+  Trash2,
   Check, 
   X, 
   Download, 
@@ -156,6 +157,13 @@ export default function SiskaperbapoKediri() {
       })
     );
     setEditingItem(null);
+  };
+
+  // Delete item handler
+  const handleDeleteItem = (id: string, name: string) => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus komoditas "${name}" dari daftar Siskaperbapo?`)) {
+      setSiskaperbapoList((prev) => prev.filter((item) => item.id !== id));
+    }
   };
 
   // Export CSV
@@ -463,13 +471,22 @@ export default function SiskaperbapoKediri() {
 
                     {/* Aksi */}
                     <td className="py-3.5 px-4 align-middle text-center">
-                      <button
-                        onClick={() => handleOpenEdit(item)}
-                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100 cursor-pointer"
-                        title="Sesuaikan Harga Pasar Manual"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => handleOpenEdit(item)}
+                          className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100 cursor-pointer"
+                          title="Sesuaikan Harga Pasar Manual"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteItem(item.id, item.name)}
+                          className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100 cursor-pointer"
+                          title="Hapus Komoditas"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
