@@ -162,7 +162,10 @@ export default function Products() {
 
         const prod = productMap[cleanKey];
         prod.totalQty += item.quantity;
-        prod.totalSoldQty += (item.soldQuantity !== undefined ? item.soldQuantity : 0);
+        const itemSoldQty = (item.salesRecords && item.salesRecords.length > 0)
+          ? item.salesRecords.reduce((sum, r) => sum + (r.quantity || 0), 0)
+          : (item.soldQuantity !== undefined ? item.soldQuantity : 0);
+        prod.totalSoldQty += itemSoldQty;
         prod.totalCost += item.total;
         prod.purchaseCount += 1;
         prod.latestPurchaseDate = purchase.purchaseDate;

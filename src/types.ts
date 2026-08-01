@@ -37,6 +37,17 @@ export interface Product {
   updatedAt?: string;
 }
 
+export interface SaleTransaction {
+  id: string;
+  transactionDate: string; // YYYY-MM-DD
+  quantity: number;
+  unit: string;
+  sellingPrice: number;
+  totalNominal: number;
+  soldTo: string;
+  notes?: string;
+}
+
 export interface PurchaseItem {
   id: string;
   itemName: string;
@@ -48,6 +59,7 @@ export interface PurchaseItem {
   soldQuantity?: number;
   soldUnit?: string;
   soldTo?: string;
+  salesRecords?: SaleTransaction[];
 }
 
 export type PurchaseStatus = 'Belum Lunas' | 'Sebagian' | 'Lunas';
