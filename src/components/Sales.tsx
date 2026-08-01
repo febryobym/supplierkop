@@ -147,7 +147,7 @@ export default function Sales() {
     const totalOmset = records.reduce((sum, r) => sum + r.totalNominal, 0);
     const totalCostOfSold = totalSoldQty * item.price;
     const estimatedProfit = totalOmset - totalCostOfSold;
-    const remainingStock = Math.max(0, item.quantity - totalSoldQty);
+    const remainingStock = item.quantity - totalSoldQty;
     
     return {
       records,
@@ -601,12 +601,16 @@ export default function Sales() {
         <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider font-sans">Sisa Stok Tersedia</span>
-            <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+            <div className={`p-2.5 rounded-xl ${totalRemainingStock < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
               <Boxes className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-4">
-            <h3 className="text-xl font-extrabold text-emerald-700 font-sans">{totalRemainingStock.toLocaleString('id-ID')} Unit</h3>
+            <h3 className={`text-xl font-extrabold font-sans ${totalRemainingStock < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+              {totalRemainingStock < 0 
+                ? `Minus (${totalRemainingStock.toLocaleString('id-ID')} Unit)` 
+                : `${totalRemainingStock.toLocaleString('id-ID')} Unit`}
+            </h3>
             <p className="text-[10px] text-gray-400 mt-1">Stok aktif di List Produk</p>
           </div>
         </div>
@@ -811,8 +815,12 @@ export default function Sales() {
 
                         {/* Stok Saat Ini (Sisa Stok) */}
                         <td className="py-3.5 px-4 align-top text-center">
-                          {summary.remainingStock <= 0 ? (
-                            <span className="inline-flex items-center gap-1 font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100 text-[11px]">
+                          {summary.remainingStock < 0 ? (
+                            <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 text-[11px]" title="Penjualan melebihi kuantitas pembelian">
+                              Minus ({summary.remainingStock.toLocaleString('id-ID')} {item.unit})
+                            </span>
+                          ) : summary.remainingStock === 0 ? (
+                            <span className="inline-flex items-center gap-1 font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg border border-gray-200 text-[11px]">
                               Habis (0 {item.unit})
                             </span>
                           ) : (
@@ -970,13 +978,14 @@ export default function Sales() {
                   </div>
                   <div>
                     <span className="text-[10px] text-gray-400 font-sans block">Sisa Stok Tersebut:</span>
-                    <span className={`font-bold ${
-                      (managingModal.item.quantity - managingModal.salesRecords.reduce((sum, r) => sum + r.quantity, 0)) <= 0 
-                        ? 'text-rose-600' 
-                        : 'text-emerald-700'
-                    }`}>
-                      {Math.max(0, managingModal.item.quantity - managingModal.salesRecords.reduce((sum, r) => sum + r.quantity, 0))} {managingModal.item.unit}
-                    </span>
+                    {(() => {
+                      const rem = managingModal.item.quantity - managingModal.salesRecords.reduce((sum, r) => sum + r.quantity, 0);
+                      return (
+                        <span className={`font-bold ${rem < 0 ? 'text-rose-600 font-mono' : rem === 0 ? 'text-gray-500 font-mono' : 'text-emerald-700 font-mono'}`}>
+                          {rem < 0 ? `Minus (${rem.toLocaleString('id-ID')} ${managingModal.item.unit})` : `${rem.toLocaleString('id-ID')} ${managingModal.item.unit}`}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <div>
                     <span className="text-[10px] text-gray-400 font-sans block">Total Omset:</span>
