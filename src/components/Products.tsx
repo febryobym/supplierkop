@@ -543,9 +543,13 @@ export default function Products() {
                       {/* Stok Saat Ini */}
                       <td className="py-3.5 px-4 align-middle text-right font-mono">
                         <div>
-                          {p.currentStock <= 0 ? (
-                            <span className="inline-flex items-center gap-1 font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100 text-[11px]">
-                              Habis ({p.currentStock} {p.unit})
+                          {p.currentStock < 0 ? (
+                            <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 text-[11px]">
+                              Minus ({p.currentStock.toLocaleString('id-ID')} {p.unit})
+                            </span>
+                          ) : p.currentStock === 0 ? (
+                            <span className="inline-flex items-center gap-1 font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200 text-[11px]">
+                              Habis (0 {p.unit})
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 text-[11px]">
