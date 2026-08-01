@@ -931,7 +931,7 @@ export default function Sales() {
                   <h3 className="text-md font-bold">Kelola Transaksi Penjualan Barang</h3>
                 </div>
                 <p className="text-[11px] text-indigo-200 mt-0.5">
-                  Invoice: <span className="font-mono">{managingModal.invoiceNumber}</span> ({managingModal.supplierName})
+                  Invoice: <span className="font-mono">{managingModal.invoiceNumber}</span> ({managingModal.supplierName}) • Tgl Beli: <span className="font-mono">{formatDate(managingModal.purchaseDate)}</span>
                 </p>
               </div>
               <button 
@@ -955,7 +955,7 @@ export default function Sales() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-2 border-t border-slate-200/80 font-mono">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs pt-2 border-t border-slate-200/80 font-mono">
                   <div>
                     <span className="text-[10px] text-gray-400 font-sans block">Total Dibeli:</span>
                     <span className="font-bold text-gray-900">
@@ -982,6 +982,12 @@ export default function Sales() {
                     <span className="text-[10px] text-gray-400 font-sans block">Total Omset:</span>
                     <span className="font-extrabold text-emerald-700">
                       {formatRupiah(managingModal.salesRecords.reduce((sum, r) => sum + r.totalNominal, 0))}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-gray-400 font-sans block">Tgl Pembelian:</span>
+                    <span className="font-bold text-gray-800">
+                      {formatDate(managingModal.purchaseDate)}
                     </span>
                   </div>
                 </div>
