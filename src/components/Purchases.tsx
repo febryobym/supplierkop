@@ -582,7 +582,7 @@ export default function Purchases() {
                       {/* Sisa / Unpaid Balance */}
                       <td className="p-4 text-right">
                         <div className={`font-mono font-bold text-[11px] ${p.remainingAmount > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                          {formatRupiah(p.remainingAmount)}
+                          {p.remainingAmount < 0 ? `(Lebih) ${formatRupiah(Math.abs(p.remainingAmount))}` : formatRupiah(p.remainingAmount)}
                         </div>
                         {p.paidAmount > 0 && (
                           <div className="text-[10px] text-gray-400 font-mono">Dibayar: {formatRupiah(p.paidAmount)}</div>
@@ -598,7 +598,7 @@ export default function Purchases() {
                             ? 'bg-amber-50 text-amber-700 border border-amber-200' 
                             : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}>
-                          {p.status}
+                          {p.remainingAmount < 0 ? 'Lunas (Lebih)' : p.status}
                         </span>
                       </td>
 

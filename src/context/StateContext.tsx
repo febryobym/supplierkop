@@ -727,7 +727,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .filter((pay) => pay.purchaseId === p.id)
         .reduce((sum, pay) => sum + pay.amount, 0);
       
-      const calculatedRemaining = Math.max(0, p.total - calculatedPaid);
+      const calculatedRemaining = p.total - calculatedPaid;
       let calculatedStatus: PurchaseStatus = 'Belum Lunas';
       if (calculatedPaid >= p.total) {
         calculatedStatus = 'Lunas';
