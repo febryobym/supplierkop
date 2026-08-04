@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useAppState } from '../context/StateContext';
 import { PurchaseItem, SaleTransaction } from '../types';
-import { formatRupiah, formatDate, exportToCSV } from '../data';
+import { formatRupiah, formatDate, exportToCSV, matchSearchFields } from '../data';
 import { 
   Search, 
   Edit3, 
@@ -163,26 +163,26 @@ export default function Sales() {
   // Filter items
   const filteredSalesItems = allSalesItems.filter(({ item, invoiceNumber, purchaseDate, supplierId, supplierName }) => {
     const summary = getItemSummary(item);
-    const cleanQuery = searchQuery.trim().toLowerCase();
-    const tokens = cleanQuery.split(/\s+/).filter(Boolean);
 
-    const matchesSearch = tokens.length === 0 || tokens.every(token => {
-      const matchName = (item.itemName || '').toLowerCase().includes(token);
-      const matchInvoice = (invoiceNumber || '').toLowerCase().includes(token);
-      const matchSupplier = (supplierName || '').toLowerCase().includes(token);
-      const matchUnit = (item.unit || '').toLowerCase().includes(token) || (item.soldUnit || '').toLowerCase().includes(token);
-      const matchSoldTo = (item.soldTo || '').toLowerCase().includes(token);
-      const matchPurchaseDate = (purchaseDate || '').toLowerCase().includes(token) || formatDate(purchaseDate).toLowerCase().includes(token);
-      const matchRecords = summary.records.some(r => 
-        (r.soldTo || '').toLowerCase().includes(token) || 
-        (r.notes || '').toLowerCase().includes(token) ||
-        (r.unit || '').toLowerCase().includes(token) ||
-        (r.transactionDate || '').toLowerCase().includes(token) ||
-        formatDate(r.transactionDate || '').toLowerCase().includes(token)
-      );
+    const fieldsToSearch = [
+      item.itemName,
+      invoiceNumber,
+      supplierName,
+      item.unit,
+      item.soldUnit,
+      item.soldTo,
+      purchaseDate,
+      formatDate(purchaseDate),
+      ...summary.records.flatMap(r => [
+        r.soldTo,
+        r.notes,
+        r.unit,
+        r.transactionDate,
+        formatDate(r.transactionDate)
+      ])
+    ];
 
-      return matchName || matchInvoice || matchSupplier || matchUnit || matchSoldTo || matchPurchaseDate || matchRecords;
-    });
+    const matchesSearch = matchSearchFields(fieldsToSearch, searchQuery);
 
     const matchesSupplier = supplierFilter === '' || supplierId === supplierFilter;
 

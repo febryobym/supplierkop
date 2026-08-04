@@ -51,6 +51,38 @@ export const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleDateString('id-ID', options);
 };
 
+/**
+ * Utility to match search queries against a set of text fields.
+ * Performs word-prefix matching so searching "gas" or "ga" matches words starting with "gas" or "ga"
+ * (e.g., "GAS ELPIJI", "GALON"), but won't false-positive match middle substrings (e.g., "Ngasem" or "Unggas").
+ */
+export const matchSearchFields = (fields: (string | undefined | null)[], query: string): boolean => {
+  const cleanQuery = query.trim().toLowerCase();
+  if (!cleanQuery) return true;
+
+  const tokens = cleanQuery.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return true;
+
+  const validFields = fields.filter((f): f is string => Boolean(f && typeof f === 'string'));
+  if (validFields.length === 0) return false;
+
+  const fullCombined = validFields.map(f => f.toLowerCase()).join(' ');
+
+  return tokens.every(token => {
+    // If token contains punctuation/symbols (like 'inv/2026' or '08-01'), fallback to direct substring match
+    if (/[^a-zA-Z0-9]/.test(token)) {
+      return fullCombined.includes(token);
+    }
+
+    // Otherwise check if ANY word in any field starts with the token
+    return validFields.some(field => {
+      const str = field.toLowerCase();
+      const words = str.split(/[\s/.,_\-()]+/).filter(Boolean);
+      return words.some(w => w.startsWith(token));
+    });
+  });
+};
+
 // Simple export CSV helper
 export const exportToCSV = (filename: string, headers: string[], data: string[][]) => {
   const content = [

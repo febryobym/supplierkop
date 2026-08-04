@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useAppState } from '../context/StateContext';
 import { Purchase, PurchaseItem, PurchaseStatus, PaymentMethod } from '../types';
-import { formatRupiah, formatDate, exportToCSV } from '../data';
+import { formatRupiah, formatDate, exportToCSV, matchSearchFields } from '../data';
 import { Plus, Search, Eye, Trash2, Calendar, FileText, ShoppingCart, Percent, DollarSign, X, CheckCircle, Clock, AlertTriangle, FileSpreadsheet, Printer, Edit } from 'lucide-react';
 
 interface FormLineItem {
@@ -388,21 +388,17 @@ export default function Purchases() {
   // Search Filter computation
   const filteredPurchases = purchases.filter(p => {
     const sName = suppliers.find(s => s.id === p.supplierId)?.name || 'N/A';
-    const cleanQuery = searchQuery.trim().toLowerCase();
-    const tokens = cleanQuery.split(/\s+/).filter(Boolean);
 
-    const matchesSearch = tokens.length === 0 || tokens.every(token => {
-      const matchInvoice = (p.invoiceNumber || '').toLowerCase().includes(token);
-      const matchSupplier = (sName || '').toLowerCase().includes(token);
-      const matchNotes = (p.notes || '').toLowerCase().includes(token);
-      const matchDate = (p.purchaseDate || '').toLowerCase().includes(token) || formatDate(p.purchaseDate).toLowerCase().includes(token);
-      const matchItems = p.items.some(item => 
-        (item.itemName || '').toLowerCase().includes(token) || 
-        (item.unit || '').toLowerCase().includes(token)
-      );
+    const fieldsToSearch = [
+      p.invoiceNumber,
+      sName,
+      p.notes,
+      p.purchaseDate,
+      formatDate(p.purchaseDate),
+      ...p.items.flatMap(item => [item.itemName, item.unit])
+    ];
 
-      return matchInvoice || matchSupplier || matchNotes || matchDate || matchItems;
-    });
+    const matchesSearch = matchSearchFields(fieldsToSearch, searchQuery);
 
     const matchesSupplier = supplierFilter === '' || p.supplierId === supplierFilter;
     const matchesStatus = statusFilter === '' || p.status === statusFilter;

@@ -6,7 +6,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAppState } from '../context/StateContext';
 import { Product, PurchaseItem } from '../types';
-import { formatRupiah, formatDate, exportToCSV } from '../data';
+import { formatRupiah, formatDate, exportToCSV, matchSearchFields } from '../data';
 import { findMatchingSiskaperbapoItem } from '../data/siskaperbapoKediri';
 import { 
   Package, 
@@ -215,20 +215,15 @@ export default function Products() {
 
   // 2. Filter & Sort products
   const filteredProducts = useMemo(() => {
-    const cleanQuery = searchQuery.trim().toLowerCase();
-    const queryTokens = cleanQuery.split(/\s+/).filter(Boolean);
-
     return aggregatedProducts
       .filter((p) => {
-        const matchesSearch = queryTokens.length === 0 || queryTokens.every(token => {
-          const matchName = (p.itemName || '').toLowerCase().includes(token);
-          const matchCode = (p.itemCode || '').toLowerCase().includes(token);
-          const matchCategory = (p.category || '').toLowerCase().includes(token);
-          const matchUnit = (p.unit || '').toLowerCase().includes(token);
-          const matchSupplier = p.suppliers.some((s) => (s || '').toLowerCase().includes(token));
-
-          return matchName || matchCode || matchCategory || matchUnit || matchSupplier;
-        });
+        const matchesSearch = matchSearchFields([
+          p.itemName,
+          p.itemCode,
+          p.category,
+          p.unit,
+          ...p.suppliers
+        ], searchQuery);
 
         const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
 
