@@ -163,19 +163,40 @@ export default function Sales() {
   // Filter items
   const filteredSalesItems = allSalesItems.filter(({ item, invoiceNumber, purchaseDate, supplierId, supplierName }) => {
     const summary = getItemSummary(item);
-    const q = searchQuery.toLowerCase();
-    
-    const matchesSearch = 
-      item.itemName.toLowerCase().includes(q) ||
-      invoiceNumber.toLowerCase().includes(q) ||
-      supplierName.toLowerCase().includes(q) ||
-      summary.records.some(r => r.soldTo.toLowerCase().includes(q) || (r.notes && r.notes.toLowerCase().includes(q)));
+    const cleanQuery = searchQuery.trim().toLowerCase();
+    const tokens = cleanQuery.split(/\s+/).filter(Boolean);
+
+    const matchesSearch = tokens.length === 0 || tokens.every(token => {
+      const matchName = (item.itemName || '').toLowerCase().includes(token);
+      const matchInvoice = (invoiceNumber || '').toLowerCase().includes(token);
+      const matchSupplier = (supplierName || '').toLowerCase().includes(token);
+      const matchUnit = (item.unit || '').toLowerCase().includes(token) || (item.soldUnit || '').toLowerCase().includes(token);
+      const matchSoldTo = (item.soldTo || '').toLowerCase().includes(token);
+      const matchPurchaseDate = (purchaseDate || '').toLowerCase().includes(token) || formatDate(purchaseDate).toLowerCase().includes(token);
+      const matchRecords = summary.records.some(r => 
+        (r.soldTo || '').toLowerCase().includes(token) || 
+        (r.notes || '').toLowerCase().includes(token) ||
+        (r.unit || '').toLowerCase().includes(token) ||
+        (r.transactionDate || '').toLowerCase().includes(token) ||
+        formatDate(r.transactionDate || '').toLowerCase().includes(token)
+      );
+
+      return matchName || matchInvoice || matchSupplier || matchUnit || matchSoldTo || matchPurchaseDate || matchRecords;
+    });
 
     const matchesSupplier = supplierFilter === '' || supplierId === supplierFilter;
 
-    const [year, month] = purchaseDate.split('-');
-    const matchesMonth = selectedMonth === 'all' || month === selectedMonth;
-    const matchesYear = selectedYear === 'all' || year === selectedYear;
+    let matchesMonth = true;
+    let matchesYear = true;
+    if (purchaseDate) {
+      const dateParts = purchaseDate.split('-');
+      if (dateParts.length >= 2) {
+        const year = dateParts[0];
+        const month = dateParts[1];
+        matchesMonth = selectedMonth === 'all' || month === selectedMonth;
+        matchesYear = selectedYear === 'all' || year === selectedYear;
+      }
+    }
 
     let matchesStatus = true;
     if (salesStatusFilter === 'unsold') {

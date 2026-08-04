@@ -215,12 +215,20 @@ export default function Products() {
 
   // 2. Filter & Sort products
   const filteredProducts = useMemo(() => {
+    const cleanQuery = searchQuery.trim().toLowerCase();
+    const queryTokens = cleanQuery.split(/\s+/).filter(Boolean);
+
     return aggregatedProducts
       .filter((p) => {
-        const matchesSearch =
-          p.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.itemCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.suppliers.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase()));
+        const matchesSearch = queryTokens.length === 0 || queryTokens.every(token => {
+          const matchName = (p.itemName || '').toLowerCase().includes(token);
+          const matchCode = (p.itemCode || '').toLowerCase().includes(token);
+          const matchCategory = (p.category || '').toLowerCase().includes(token);
+          const matchUnit = (p.unit || '').toLowerCase().includes(token);
+          const matchSupplier = p.suppliers.some((s) => (s || '').toLowerCase().includes(token));
+
+          return matchName || matchCode || matchCategory || matchUnit || matchSupplier;
+        });
 
         const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
 

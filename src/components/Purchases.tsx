@@ -388,14 +388,36 @@ export default function Purchases() {
   // Search Filter computation
   const filteredPurchases = purchases.filter(p => {
     const sName = suppliers.find(s => s.id === p.supplierId)?.name || 'N/A';
-    const matchesSearch = p.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          p.items.some(item => item.itemName.toLowerCase().includes(searchQuery.toLowerCase()));
+    const cleanQuery = searchQuery.trim().toLowerCase();
+    const tokens = cleanQuery.split(/\s+/).filter(Boolean);
+
+    const matchesSearch = tokens.length === 0 || tokens.every(token => {
+      const matchInvoice = (p.invoiceNumber || '').toLowerCase().includes(token);
+      const matchSupplier = (sName || '').toLowerCase().includes(token);
+      const matchNotes = (p.notes || '').toLowerCase().includes(token);
+      const matchDate = (p.purchaseDate || '').toLowerCase().includes(token) || formatDate(p.purchaseDate).toLowerCase().includes(token);
+      const matchItems = p.items.some(item => 
+        (item.itemName || '').toLowerCase().includes(token) || 
+        (item.unit || '').toLowerCase().includes(token)
+      );
+
+      return matchInvoice || matchSupplier || matchNotes || matchDate || matchItems;
+    });
+
     const matchesSupplier = supplierFilter === '' || p.supplierId === supplierFilter;
     const matchesStatus = statusFilter === '' || p.status === statusFilter;
 
-    const [year, month] = p.purchaseDate.split('-');
-    const matchesMonth = selectedMonth === 'all' || month === selectedMonth;
-    const matchesYear = selectedYear === 'all' || year === selectedYear;
+    let matchesMonth = true;
+    let matchesYear = true;
+    if (p.purchaseDate) {
+      const dateParts = p.purchaseDate.split('-');
+      if (dateParts.length >= 2) {
+        const year = dateParts[0];
+        const month = dateParts[1];
+        matchesMonth = selectedMonth === 'all' || month === selectedMonth;
+        matchesYear = selectedYear === 'all' || year === selectedYear;
+      }
+    }
 
     return matchesSearch && matchesSupplier && matchesStatus && matchesMonth && matchesYear;
   });
