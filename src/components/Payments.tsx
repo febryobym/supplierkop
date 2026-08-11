@@ -531,6 +531,16 @@ export default function Payments() {
                     <div className="flex justify-between items-start font-bold">
                       <div className="space-y-0.5">
                         <span className="text-[13px] block">{s?.name} ({s?.code})</span>
+                        {(s?.bankName || s?.bankAccount) ? (
+                          <div className="text-[11px] text-indigo-800 font-mono font-medium flex items-center gap-1 mt-0.5">
+                            <Landmark className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                            <span>Rekening: <strong className="font-semibold text-indigo-950">{s.bankName} - {s.bankAccount}</strong>{s.bankAccountHolder ? ` (a.n ${s.bankAccountHolder})` : ''}</span>
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-gray-400 font-normal italic block">
+                            Rekening: Belum diisi
+                          </div>
+                        )}
                         {currentPurch.notes && (
                           <span className="text-[10px] text-indigo-600/80 font-normal italic block">
                             Catatan: {currentPurch.notes}
