@@ -634,11 +634,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const list: Supplier[] = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data() as Supplier;
-        if (['spl-2', 'spl-3', 'spl-4'].includes(data.id)) {
-          deleteDoc(doc(db, 'suppliers', data.id)).catch(() => {});
-        } else {
-          list.push(data);
-        }
+        list.push(data);
       });
       setSuppliers(list);
     }, (error) => {
@@ -887,33 +883,61 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Suppliers CRUD
   const addSupplier = async (supplierData: Omit<Supplier, 'id'>) => {
     const id = `spl-${Date.now()}`;
-    const newSupplier: Supplier = { ...supplierData, id };
+    const cleanSupplier: Supplier = {
+      id,
+      name: supplierData.name || '',
+      code: supplierData.code || '',
+      contactPerson: supplierData.contactPerson || '',
+      phone: supplierData.phone || '',
+      email: supplierData.email || '',
+      address: supplierData.address || '',
+      bankName: supplierData.bankName || '',
+      bankAccount: supplierData.bankAccount || '',
+      bankAccountHolder: supplierData.bankAccountHolder || ''
+    };
+
+    setSuppliers((prev) => [...prev, cleanSupplier]);
 
     if (isOfflineFallback) {
-      setSuppliers((prev) => [...prev, newSupplier]);
       registerOfflineChange();
-      await addSystemLog('TAMBAH_SUPPLIER', `Supplier ${newSupplier.name} (${newSupplier.code})`);
+      await addSystemLog('TAMBAH_SUPPLIER', `Supplier ${cleanSupplier.name} (${cleanSupplier.code})`);
     } else {
       try {
-        await setDoc(doc(db, 'suppliers', id), newSupplier);
-        await addSystemLog('TAMBAH_SUPPLIER', `Supplier ${newSupplier.name} (${newSupplier.code})`);
+        await setDoc(doc(db, 'suppliers', id), cleanSupplier);
+        await addSystemLog('TAMBAH_SUPPLIER', `Supplier ${cleanSupplier.name} (${cleanSupplier.code})`);
       } catch (error) {
+        console.error('Error adding supplier to Firestore:', error);
         handleFirestoreError(error, OperationType.CREATE, `suppliers/${id}`);
       }
     }
   };
 
   const updateSupplier = async (updated: Supplier) => {
+    const cleanSupplier: Supplier = {
+      id: updated.id,
+      name: updated.name || '',
+      code: updated.code || '',
+      contactPerson: updated.contactPerson || '',
+      phone: updated.phone || '',
+      email: updated.email || '',
+      address: updated.address || '',
+      bankName: updated.bankName || '',
+      bankAccount: updated.bankAccount || '',
+      bankAccountHolder: updated.bankAccountHolder || ''
+    };
+
+    setSuppliers((prev) => prev.map((s) => (s.id === cleanSupplier.id ? cleanSupplier : s)));
+
     if (isOfflineFallback) {
-      setSuppliers((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
       registerOfflineChange();
-      await addSystemLog('UBAH_SUPPLIER', `Supplier ${updated.name} (${updated.code})`);
+      await addSystemLog('UBAH_SUPPLIER', `Supplier ${cleanSupplier.name} (${cleanSupplier.code})`);
     } else {
       try {
-        await setDoc(doc(db, 'suppliers', updated.id), updated);
-        await addSystemLog('UBAH_SUPPLIER', `Supplier ${updated.name} (${updated.code})`);
+        await setDoc(doc(db, 'suppliers', cleanSupplier.id), cleanSupplier);
+        await addSystemLog('UBAH_SUPPLIER', `Supplier ${cleanSupplier.name} (${cleanSupplier.code})`);
       } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `suppliers/${updated.id}`);
+        console.error('Error updating supplier in Firestore:', error);
+        handleFirestoreError(error, OperationType.UPDATE, `suppliers/${cleanSupplier.id}`);
       }
     }
   };

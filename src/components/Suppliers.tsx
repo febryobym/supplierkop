@@ -74,7 +74,7 @@ export default function Suppliers() {
     setIsFormOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingSupplier && isReadOnly) {
       setErrorMessage('Akses Ditolak: Peran Staff tidak diijinkan menyunting detail supplier.');
@@ -86,25 +86,30 @@ export default function Suppliers() {
       return;
     }
 
-    if (editingSupplier) {
-      updateSupplier({
-        ...formData,
-        id: editingSupplier.id
-      });
-      setSuccessMessage('Sukses memperbarui informasi supplier!');
-    } else {
-      // Check duplicate code
-      const codeExists = suppliers.some(s => s.code.toLowerCase() === formData.code.toLowerCase());
-      if (codeExists) {
-        setErrorMessage('Kode Supplier sudah digunakan!');
-        return;
+    try {
+      if (editingSupplier) {
+        await updateSupplier({
+          ...formData,
+          id: editingSupplier.id
+        });
+        setSuccessMessage('Sukses memperbarui informasi supplier!');
+      } else {
+        // Check duplicate code
+        const codeExists = suppliers.some(s => s.code.toLowerCase() === formData.code.toLowerCase());
+        if (codeExists) {
+          setErrorMessage('Kode Supplier sudah digunakan!');
+          return;
+        }
+        await addSupplier(formData);
+        setSuccessMessage('Sukses menambahkan supplier baru!');
       }
-      addSupplier(formData);
-      setSuccessMessage('Sukses menambahkan supplier baru!');
-    }
 
-    setIsFormOpen(false);
-    setTimeout(() => setSuccessMessage(''), 3000);
+      setIsFormOpen(false);
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err: any) {
+      console.error('Gagal menyimpan supplier:', err);
+      setErrorMessage(`Gagal menyimpan data supplier: ${err?.message || 'Sistem mengalami kendala.'}`);
+    }
   };
 
   const handleDelete = (id: string) => {
