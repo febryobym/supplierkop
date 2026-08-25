@@ -29,58 +29,164 @@ interface BankReceiptModalProps {
   onClose: () => void;
 }
 
-// Bank Logo Components
-export function BankLogo({ bankName, className = "h-9 w-auto" }: { bankName?: string; className?: string }) {
+// Bank Logo Components matching official brand identities
+export function BankLogo({ bankName, className = "h-11 w-auto" }: { bankName?: string; className?: string }) {
   const norm = (bankName || '').toLowerCase().trim();
 
+  // Bank Mandiri (Official Wave Ribbon & lowercase mandiri)
   if (norm.includes('mandiri')) {
     return (
-      <svg className={className} viewBox="0 0 160 52" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* Mandiri curved gold ribbon above ri */}
-        <path d="M96 16C108 5 128 6 142 14C136 10 120 7 110 14C102 20 98 17 96 16Z" fill="#F8B119" />
-        <path d="M106 13C122 2 146 5 158 15C150 9 130 5 116 11C110 14 107 14 106 13Z" fill="#FDB913" />
-        {/* "mandiri" text in lowercase dark navy bold */}
-        <text x="4" y="38" fill="#002D62" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" fontSize="30" letterSpacing="-0.8">
-          mandirı
+      <svg className={className} viewBox="0 0 240 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Golden Wave Ribbon */}
+        <path
+          d="M98 32C112 18 132 18 148 31C164 44 186 44 202 30C210 23 218 24 226 31L236 21C222 9 202 9 186 22C170 35 148 35 132 21C122 13 110 13 98 22L98 32Z"
+          fill="#F5A800"
+        />
+        <path
+          d="M98 26C112 14 130 14 146 25C162 36 182 36 198 25C208 17 218 18 226 24L230 18C218 8 200 8 186 18C172 28 152 28 138 17C124 7 108 8 98 18V26Z"
+          fill="#FFC72C"
+          fillOpacity="0.8"
+        />
+        {/* "mandiri" text */}
+        <text
+          x="4"
+          y="56"
+          fill="#13294B"
+          fontFamily="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+          fontWeight="900"
+          fontSize="44"
+          letterSpacing="-1.5"
+        >
+          mandırı
         </text>
       </svg>
     );
   }
 
+  // Bank BCA (Official Shield with 3-petal emblem + "GRUP BCA" + bold italic "BCA")
   if (norm.includes('bca')) {
     return (
-      <svg className={className} viewBox="0 0 130 46" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="130" height="46" rx="9" fill="#00529C" />
-        <text x="65" y="32" fill="#FFFFFF" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" fontSize="26" textAnchor="middle" letterSpacing="1">
+      <svg className={className} viewBox="0 0 220 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Left Shield Badge */}
+        <rect x="2" y="5" width="60" height="60" rx="14" fill="#005CA9" />
+        {/* Center Main Petal */}
+        <ellipse cx="32" cy="28" rx="7.5" ry="11" fill="#FFFFFF" />
+        {/* Left Wing Petal */}
+        <path d="M17 38C15 31 22 25 30 31C24 35 22 41 17 38Z" fill="#FFFFFF" />
+        <path d="M16 43C13 36 21 34 29 37C24 41 21 46 16 43Z" fill="#FFFFFF" />
+        {/* Right Wing Petal */}
+        <path d="M47 38C49 31 42 25 34 31C40 35 42 41 47 38Z" fill="#FFFFFF" />
+        <path d="M48 43C51 36 43 34 35 37C40 41 43 46 48 43Z" fill="#FFFFFF" />
+        {/* Shield Subtext */}
+        <text
+          x="32"
+          y="57"
+          fill="#FFFFFF"
+          fontFamily="system-ui, sans-serif"
+          fontWeight="800"
+          fontSize="6.5"
+          textAnchor="middle"
+          letterSpacing="0.8"
+        >
+          GRUP BCA
+        </text>
+
+        {/* Right Bold Italic "BCA" */}
+        <text
+          x="74"
+          y="52"
+          fill="#005CA9"
+          fontFamily="Arial Black, Impact, system-ui, sans-serif"
+          fontWeight="900"
+          fontStyle="italic"
+          fontSize="46"
+          letterSpacing="-0.5"
+        >
           BCA
         </text>
-        <circle cx="20" cy="23" r="5" fill="#FFFFFF" fillOpacity="0.3" />
-        <circle cx="110" cy="23" r="5" fill="#FFFFFF" fillOpacity="0.3" />
       </svg>
     );
   }
 
+  // Bank BRI (Official Interlocking 'B' Mark + "BANK BRI" + Slogan)
   if (norm.includes('bri') || norm.includes('rakyat')) {
     return (
-      <svg className={className} viewBox="0 0 140 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="140" height="48" rx="8" fill="#00529C" />
-        <path d="M98 8C114 12 126 24 130 38C124 28 112 18 98 16Z" fill="#F37021" />
-        <text x="14" y="34" fill="#FFFFFF" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" fontSize="26" letterSpacing="0.5">
+      <svg className={className} viewBox="0 0 250 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Interlocking geometric B icon */}
+        <g fill="#00529C">
+          {/* Outer Rounded Container / Stylized Loops */}
+          <rect x="2" y="6" width="58" height="58" rx="14" fill="#00529C" />
+          <path
+            d="M16 18H28C34 18 38 21 38 26C38 29 36 32 32 33C37 34 40 37 40 43C40 49 35 52 28 52H16V18ZM23 31H27C30 31 32 29 32 26C32 23 30 22 27 22H23V31ZM23 48H28C31 48 34 46 34 43C34 39 31 37 28 37H23V48Z"
+            fill="#FFFFFF"
+          />
+          <path
+            d="M32 25C37 25 43 28 43 34C43 38 40 41 36 42C41 43 45 47 45 53C45 59 40 62 34 62H26L30 57H34C37 57 39 55 39 52C39 49 37 47 34 47H29L33 42C36 42 38 40 38 37C38 34 36 32 33 32H27L31 25H32Z"
+            fill="#FFFFFF"
+            fillOpacity="0.4"
+          />
+        </g>
+
+        {/* Text: BANK BRI */}
+        <text
+          x="68"
+          y="43"
+          fill="#00529C"
+          fontFamily="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+          fontWeight="900"
+          fontSize="38"
+          letterSpacing="0.5"
+        >
           BANK BRI
+        </text>
+
+        {/* Subtext: Melayani Dengan Setulus Hati */}
+        <text
+          x="69"
+          y="61"
+          fill="#00529C"
+          fontFamily="system-ui, -apple-system, sans-serif"
+          fontWeight="600"
+          fontSize="11.5"
+          letterSpacing="-0.2"
+        >
+          Melayani Dengan Setulus Hati
         </text>
       </svg>
     );
   }
 
+  // Bank BNI (Official Orange Square with stylized '46' + teal "BNI" serif font)
   if (norm.includes('bni') || norm.includes('negara')) {
     return (
-      <svg className={className} viewBox="0 0 130 46" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <text x="6" y="33" fill="#005E6A" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" fontSize="28" letterSpacing="-0.5">
+      <svg className={className} viewBox="0 0 220 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Orange Square with white abstract ribbons */}
+        <rect x="2" y="8" width="54" height="54" rx="3" fill="#F15A24" />
+        {/* Stylized '46' curve loops in white */}
+        <path
+          d="M14 62L44 8"
+          stroke="#FFFFFF"
+          strokeWidth="6"
+          strokeLinecap="round"
+        />
+        <path
+          d="M20 32C24 22 36 18 44 24C52 30 50 44 38 48C28 52 18 42 22 32"
+          stroke="#FFFFFF"
+          strokeWidth="5"
+          fill="none"
+        />
+
+        {/* "BNI" in refined dark teal serif */}
+        <text
+          x="68"
+          y="52"
+          fill="#005F6A"
+          fontFamily="Georgia, 'Times New Roman', serif"
+          fontWeight="900"
+          fontSize="48"
+          letterSpacing="1"
+        >
           BNI
-        </text>
-        <rect x="74" y="8" width="48" height="30" rx="6" fill="#F15A24" />
-        <text x="98" y="30" fill="#FFFFFF" fontFamily="Arial, Helvetica, sans-serif" fontWeight="bold" fontSize="18" textAnchor="middle">
-          46
         </text>
       </svg>
     );
@@ -211,7 +317,7 @@ function formatSlipDateTime(paymentDate?: string, createdAtStr?: string) {
   const month = months[monthIndex] || 'Aug';
 
   return {
-    headerTimestamp: `${month} ${day}, ${year} ${hours}:${minutes}:${seconds} (GMT+7)`,
+    headerTimestamp: `${month} ${day}, ${year} (GMT+7)`,
     creationDate: `${month} ${day}, ${year}`,
     instructionDate: `${month} ${day}, ${year}`
   };
