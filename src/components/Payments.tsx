@@ -7,7 +7,8 @@ import React, { useState } from 'react';
 import { useAppState } from '../context/StateContext';
 import { Payment, PaymentMethod } from '../types';
 import { formatRupiah, formatDate, exportToCSV } from '../data';
-import { Plus, Search, Trash2, Landmark, CreditCard, ChevronRight, FileSpreadsheet, X, CheckCircle, Calendar, MessageSquare, ShieldAlert, Edit, Eye, Printer } from 'lucide-react';
+import { Plus, Search, Trash2, Landmark, CreditCard, ChevronRight, FileSpreadsheet, X, CheckCircle, Calendar, MessageSquare, ShieldAlert, Edit, Eye, Printer, FileText } from 'lucide-react';
+import BankReceiptModal from './BankReceiptModal';
 
 export default function Payments() {
   const { payments, purchases, suppliers, addPayment, updatePayment, deletePayment, currentUser } = useAppState();
@@ -406,10 +407,11 @@ export default function Payments() {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => setViewingPayment(p)}
-                            className="p-1.5 bg-gray-50 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer"
-                            title="Detail Bukti Pembayaran"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-[11px] font-bold transition-all shadow-2xs border border-indigo-200/70 cursor-pointer"
+                            title="Lihat Bukti Transfer & Rincian Produk Sesuai Nota"
                           >
-                            <Eye className="w-4 h-4" />
+                            <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Bukti/Trans</span>
                           </button>
 
                           {canEdit && (
@@ -430,10 +432,6 @@ export default function Payments() {
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
-                          )}
-
-                          {!canEdit && !canDelete && (
-                            <span className="text-[10px] text-gray-300 italic" title="Staff hanya boleh meninjau rincian">Hanya Lihat</span>
                           )}
                         </div>
                       </td>
@@ -720,153 +718,19 @@ export default function Payments() {
         </div>
       )}
 
-      {/* Detail Viewer Modal / Printable Receipt */}
-      {viewingPayment && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in text-gray-800">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
-            
-            {/* Header */}
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
-                  <CreditCard className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Kwitansi Pelunasan</h3>
-                  <p className="text-xs font-mono font-bold text-gray-900 mt-1">{viewingPayment.id}</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setViewingPayment(null)} 
-                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Receipt Content */}
-            <div className="p-6 space-y-6 overflow-y-auto flex-1 text-xs" id="printable-receipt">
-              <div className="text-center pb-4 border-b border-dashed border-gray-200">
-                <span className="text-xl font-bold font-sans tracking-tight block text-gray-900">BUKTI TRANSFER / KAS</span>
-                <span className="text-[10px] text-gray-400 uppercase tracking-wider block mt-1">Sistem Manajemen Kelola Finansial</span>
-              </div>
-
-              <div className="space-y-4">
-                {/* 2 column grid metadata */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-[10px] text-gray-400 uppercase font-bold block">Tanggal Pelunasan</span>
-                    <span className="font-mono text-gray-900 font-semibold">{formatDate(viewingPayment.paymentDate)}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-gray-400 uppercase font-bold block mb-0.5">Metode Pembayaran</span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                      viewingPayment.paymentMethod === 'Transfer Bank' 
-                        ? 'bg-blue-50 text-blue-700 border border-blue-100' 
-                        : viewingPayment.paymentMethod === 'Cek_Giro' 
-                        ? 'bg-purple-50 text-purple-700 border border-purple-100' 
-                        : viewingPayment.paymentMethod === 'Cash' 
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                        : 'bg-gray-50 text-gray-700 border border-gray-100'
-                    }`}>
-                      {viewingPayment.paymentMethod}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-[10px] text-gray-400 uppercase font-bold block">Faktur Rujukan</span>
-                    <span className="font-mono text-indigo-600 font-bold">
-                      {purchases.find(p => p.id === viewingPayment.purchaseId)?.invoiceNumber || 'N/A'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-gray-400 uppercase font-bold block">Nomor Referensi</span>
-                    <span className="font-mono text-gray-900 font-semibold">{viewingPayment.referenceNumber || 'N/A (Cash)'}</span>
-                  </div>
-                </div>
-
-                {/* Supplier Detail Panel */}
-                {(() => {
-                  const purch = purchases.find(p => p.id === viewingPayment.purchaseId);
-                  const supplier = suppliers.find(s => s.id === purch?.supplierId);
-                  if (!supplier) return null;
-                  return (
-                    <div className="bg-gray-50/80 border border-gray-100 rounded-2xl p-4 space-y-2">
-                      <span className="text-[9px] uppercase tracking-wider font-bold text-gray-400 block">Pihak Penerima (Supplier Mitra)</span>
-                      <div className="font-bold text-gray-900">{supplier.name}</div>
-                      <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-500 font-sans">
-                        <div>
-                          <span className="block text-[10px] text-gray-400">Hubungi Kontak</span>
-                          <span>{supplier.phone || '-'}</span>
-                        </div>
-                        <div>
-                          <span className="block text-[10px] text-gray-400">Rekening Bank</span>
-                          <span className="font-mono text-gray-700 font-bold">{supplier.bankName} - {supplier.bankAccount}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Amount Box */}
-                <div className="bg-indigo-900 text-white rounded-2xl p-4 flex flex-col items-center justify-center text-center space-y-1">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-300">TOTAL DANA DICAIRKAN</span>
-                  <span className="text-xl font-black font-mono">{formatRupiah(viewingPayment.amount)}</span>
-                </div>
-
-                {/* Notes and operator detail */}
-                <div className="space-y-3 text-gray-600">
-                  <div>
-                    <span className="text-[10px] text-gray-400 uppercase font-bold block mb-1">Catatan Kasir</span>
-                    <p className="italic leading-relaxed text-gray-700 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                      {viewingPayment.notes || 'Tidak ada catatan tambahan untuk pembayaran ini.'}
-                    </p>
-                  </div>
-                  <div className="flex justify-between text-[10px] pt-2 border-t border-gray-100 font-mono text-gray-400">
-                    <span>Dicatat: <strong className="text-gray-700">{viewingPayment.receivedBy}</strong></span>
-                    <span>Waktu entri: <strong className="text-gray-700">{formatDate(viewingPayment.createdAt)}</strong></span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions panel inside modal */}
-              <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setViewingPayment(null)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl cursor-pointer"
-                >
-                  Tutup
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const printContents = document.getElementById('printable-receipt')?.innerHTML;
-                    if (printContents) {
-                      const originalContents = document.body.innerHTML;
-                      document.body.innerHTML = `
-                        <div style="padding: 40px; font-family: sans-serif; max-width: 500px; margin: 0 auto; line-height: 1.5; color: #111;">
-                          ${printContents}
-                        </div>
-                      `;
-                      window.print();
-                      document.body.innerHTML = originalContents;
-                      window.location.reload(); 
-                    }
-                  }}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>Cetak Kwitansi</span>
-                </button>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Detail Viewer Modal / Realistic Bank Transaction Status Slip */}
+      {viewingPayment && (() => {
+        const purch = purchases.find(p => p.id === viewingPayment.purchaseId);
+        const supp = suppliers.find(s => s.id === purch?.supplierId);
+        return (
+          <BankReceiptModal
+            payment={viewingPayment}
+            purchase={purch}
+            supplier={supp}
+            onClose={() => setViewingPayment(null)}
+          />
+        );
+      })()}
 
     </div>
   );

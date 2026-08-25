@@ -5,9 +5,10 @@
 
 import React, { useState } from 'react';
 import { useAppState } from '../context/StateContext';
-import { Purchase, PurchaseItem, PurchaseStatus, PaymentMethod } from '../types';
+import { Purchase, PurchaseItem, PurchaseStatus, PaymentMethod, Payment } from '../types';
 import { formatRupiah, formatDate, exportToCSV, matchSearchFields } from '../data';
 import { Plus, Search, Eye, Trash2, Calendar, FileText, ShoppingCart, Percent, DollarSign, X, CheckCircle, Clock, AlertTriangle, FileSpreadsheet, Printer, Edit } from 'lucide-react';
+import BankReceiptModal from './BankReceiptModal';
 
 interface FormLineItem {
   itemName: string;
@@ -75,6 +76,7 @@ export default function Purchases() {
 
   // Invoice Detail Viewer State
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+  const [viewingPaymentReceipt, setViewingPaymentReceipt] = useState<Payment | null>(null);
 
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
 
@@ -1325,6 +1327,44 @@ export default function Purchases() {
 
               </div>
 
+              {/* Associated Payments / Bukti Transfer */}
+              {(() => {
+                const invoicePayments = payments.filter(pay => pay.purchaseId === selectedPurchase.id);
+                if (invoicePayments.length === 0) return null;
+                return (
+                  <div className="space-y-2 border-t border-gray-150 pt-4 print:hidden">
+                    <span className="font-semibold text-gray-400 text-[10px] uppercase tracking-wider block">
+                      Bukti Pembayaran / Mutasi Kas Terkait ({invoicePayments.length})
+                    </span>
+                    <div className="space-y-1.5">
+                      {invoicePayments.map(pay => (
+                        <div key={pay.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+                          <div>
+                            <span className="font-mono font-bold text-gray-900">{formatDate(pay.paymentDate)}</span>
+                            <span className="mx-1.5 text-gray-300">•</span>
+                            <span className="text-gray-600">{pay.paymentMethod}</span>
+                            {pay.referenceNumber && (
+                              <span className="ml-1.5 text-gray-400 font-mono text-[11px]">({pay.referenceNumber})</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono font-bold text-emerald-700">{formatRupiah(pay.amount)}</span>
+                            <button
+                              onClick={() => setViewingPaymentReceipt(pay)}
+                              className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-lg border border-indigo-200 cursor-pointer flex items-center gap-1 transition-colors"
+                              title="Lihat Bukti Transfer Bank Resmi"
+                            >
+                              <FileText className="w-3 h-3 text-indigo-600" />
+                              <span>Bukti/Trans</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Visual Signatures blocks in printed copy */}
               <div className="hidden print:grid grid-cols-2 gap-8 pt-12 text-center text-[10px] w-full mt-10">
                 <div className="space-y-12">
@@ -1352,6 +1392,20 @@ export default function Purchases() {
           </div>
         </div>
       )}
+
+      {/* Realistic Bank Transaction Status Slip */}
+      {viewingPaymentReceipt && (() => {
+        const purch = purchases.find(p => p.id === viewingPaymentReceipt.purchaseId);
+        const supp = suppliers.find(s => s.id === purch?.supplierId);
+        return (
+          <BankReceiptModal
+            payment={viewingPaymentReceipt}
+            purchase={purch}
+            supplier={supp}
+            onClose={() => setViewingPaymentReceipt(null)}
+          />
+        );
+      })()}
 
     </div>
   );
