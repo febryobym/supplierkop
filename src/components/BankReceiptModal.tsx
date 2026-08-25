@@ -171,24 +171,48 @@ function getBankLegalInfo(bankName?: string) {
   return `PT. ${bankName} Tbk`;
 }
 
-// Helper to format English date for slip (e.g. Aug 25, 2026 21:49:31 (GMT+7))
-function formatSlipDateTime(dateStr?: string, createdAtStr?: string) {
-  const baseDate = createdAtStr ? new Date(createdAtStr) : (dateStr ? new Date(dateStr) : new Date());
-  
-  // Format Month in English: Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
+// Helper to format English date for slip (e.g. Aug 25, 2026 21:47:24 (GMT+7)) strictly using Tanggal Bayar (paymentDate)
+function formatSlipDateTime(paymentDate?: string, createdAtStr?: string) {
+  let year = 2026;
+  let monthIndex = 7; // Aug (0-indexed)
+  let day = 25;
+
+  if (paymentDate && paymentDate.includes('-')) {
+    const parts = paymentDate.split('-');
+    if (parts.length >= 3) {
+      year = parseInt(parts[0], 10) || 2026;
+      monthIndex = Math.max(0, Math.min(11, (parseInt(parts[1], 10) || 8) - 1));
+      day = parseInt(parts[2], 10) || 25;
+    }
+  } else if (paymentDate) {
+    const d = new Date(paymentDate);
+    if (!isNaN(d.getTime())) {
+      year = d.getFullYear();
+      monthIndex = d.getMonth();
+      day = d.getDate();
+    }
+  }
+
+  // Preserve time component from createdAt if available, otherwise default to standard time
+  let hours = '21';
+  let minutes = '47';
+  let seconds = '24';
+
+  if (createdAtStr) {
+    const createdDate = new Date(createdAtStr);
+    if (!isNaN(createdDate.getTime())) {
+      hours = String(createdDate.getHours()).padStart(2, '0');
+      minutes = String(createdDate.getMinutes()).padStart(2, '0');
+      seconds = String(createdDate.getSeconds()).padStart(2, '0');
+    }
+  }
+
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const month = months[baseDate.getMonth()];
-  const day = baseDate.getDate();
-  const year = baseDate.getFullYear();
-  
-  // Format time (e.g. 21:49:31)
-  const hours = String(baseDate.getHours()).padStart(2, '0');
-  const minutes = String(baseDate.getMinutes()).padStart(2, '0');
-  const seconds = String(baseDate.getSeconds()).padStart(2, '0');
+  const month = months[monthIndex] || 'Aug';
 
   return {
     headerTimestamp: `${month} ${day}, ${year} ${hours}:${minutes}:${seconds} (GMT+7)`,
-    creationDate: `${month} ${day}, ${year} ${hours}:${minutes}:${seconds} (GMT +7)`,
+    creationDate: `${month} ${day}, ${year}`,
     instructionDate: `${month} ${day}, ${year}`
   };
 }
