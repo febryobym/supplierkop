@@ -25,6 +25,12 @@ export interface Supplier {
   bankName: string;
   bankAccount: string;
   bankAccountHolder: string;
+  ktpNumber?: string;
+  ktpFile?: string;
+  ktpFileName?: string;
+  npwpNumber?: string;
+  npwpFile?: string;
+  npwpFileName?: string;
 }
 
 export interface Product {

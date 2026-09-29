@@ -461,7 +461,11 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               localItem.email !== dbItem.email ||
               localItem.bankName !== dbItem.bankName ||
               localItem.bankAccount !== dbItem.bankAccount ||
-              localItem.bankAccountHolder !== dbItem.bankAccountHolder
+              localItem.bankAccountHolder !== dbItem.bankAccountHolder ||
+              localItem.ktpNumber !== dbItem.ktpNumber ||
+              localItem.ktpFile !== dbItem.ktpFile ||
+              localItem.npwpNumber !== dbItem.npwpNumber ||
+              localItem.npwpFile !== dbItem.npwpFile
             );
           });
 
@@ -893,7 +897,13 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       address: supplierData.address || '',
       bankName: supplierData.bankName || '',
       bankAccount: supplierData.bankAccount || '',
-      bankAccountHolder: supplierData.bankAccountHolder || ''
+      bankAccountHolder: supplierData.bankAccountHolder || '',
+      ktpNumber: supplierData.ktpNumber || '',
+      ktpFile: supplierData.ktpFile || '',
+      ktpFileName: supplierData.ktpFileName || '',
+      npwpNumber: supplierData.npwpNumber || '',
+      npwpFile: supplierData.npwpFile || '',
+      npwpFileName: supplierData.npwpFileName || ''
     };
 
     setSuppliers((prev) => [...prev, cleanSupplier]);
@@ -923,7 +933,13 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       address: updated.address || '',
       bankName: updated.bankName || '',
       bankAccount: updated.bankAccount || '',
-      bankAccountHolder: updated.bankAccountHolder || ''
+      bankAccountHolder: updated.bankAccountHolder || '',
+      ktpNumber: updated.ktpNumber || '',
+      ktpFile: updated.ktpFile || '',
+      ktpFileName: updated.ktpFileName || '',
+      npwpNumber: updated.npwpNumber || '',
+      npwpFile: updated.npwpFile || '',
+      npwpFileName: updated.npwpFileName || ''
     };
 
     setSuppliers((prev) => prev.map((s) => (s.id === cleanSupplier.id ? cleanSupplier : s)));
