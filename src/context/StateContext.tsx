@@ -465,7 +465,9 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               localItem.ktpNumber !== dbItem.ktpNumber ||
               localItem.ktpFile !== dbItem.ktpFile ||
               localItem.npwpNumber !== dbItem.npwpNumber ||
-              localItem.npwpFile !== dbItem.npwpFile
+              localItem.npwpFile !== dbItem.npwpFile ||
+              localItem.nibNumber !== dbItem.nibNumber ||
+              localItem.nibFile !== dbItem.nibFile
             );
           });
 
@@ -903,7 +905,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ktpFileName: supplierData.ktpFileName || '',
       npwpNumber: supplierData.npwpNumber || '',
       npwpFile: supplierData.npwpFile || '',
-      npwpFileName: supplierData.npwpFileName || ''
+      npwpFileName: supplierData.npwpFileName || '',
+      nibNumber: supplierData.nibNumber || '',
+      nibFile: supplierData.nibFile || '',
+      nibFileName: supplierData.nibFileName || ''
     };
 
     setSuppliers((prev) => [...prev, cleanSupplier]);
@@ -939,7 +944,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ktpFileName: updated.ktpFileName || '',
       npwpNumber: updated.npwpNumber || '',
       npwpFile: updated.npwpFile || '',
-      npwpFileName: updated.npwpFileName || ''
+      npwpFileName: updated.npwpFileName || '',
+      nibNumber: updated.nibNumber || '',
+      nibFile: updated.nibFile || '',
+      nibFileName: updated.nibFileName || ''
     };
 
     setSuppliers((prev) => prev.map((s) => (s.id === cleanSupplier.id ? cleanSupplier : s)));

@@ -31,6 +31,9 @@ export interface Supplier {
   npwpNumber?: string;
   npwpFile?: string;
   npwpFileName?: string;
+  nibNumber?: string;
+  nibFile?: string;
+  nibFileName?: string;
 }
 
 export interface Product {

@@ -33,7 +33,10 @@
         "ktpFileName": { "type": "string", "description": "File name of uploaded KTP document" },
         "npwpNumber": { "type": "string", "description": "Tax identification number (NPWP)" },
         "npwpFile": { "type": "string", "description": "NPWP document / image attachment data" },
-        "npwpFileName": { "type": "string", "description": "File name of uploaded NPWP document" }
+        "npwpFileName": { "type": "string", "description": "File name of uploaded NPWP document" },
+        "nibNumber": { "type": "string", "description": "Business Identification Number (Nomor Induk Berusaha / NIB)" },
+        "nibFile": { "type": "string", "description": "NIB document / image attachment data" },
+        "nibFileName": { "type": "string", "description": "File name of uploaded NIB document" }
       },
       "required": ["id", "name", "code", "contactPerson", "phone", "email", "address", "bankName", "bankAccount", "bankAccountHolder"]
     },

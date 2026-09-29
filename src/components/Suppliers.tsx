@@ -35,14 +35,15 @@ import {
   Check, 
   FileCheck,
   RefreshCw,
-  FileBadge
+  FileBadge,
+  Briefcase
 } from 'lucide-react';
 
 interface PreviewDocState {
   title: string;
   supplierName: string;
   supplierCode: string;
-  docType: 'KTP' | 'NPWP';
+  docType: 'KTP' | 'NPWP' | 'NIB';
   docNumber?: string;
   fileUrl: string;
   fileName?: string;
@@ -53,7 +54,7 @@ export default function Suppliers() {
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
-  const [docFilter, setDocFilter] = useState<'all' | 'ktp' | 'npwp' | 'complete' | 'incomplete'>('all');
+  const [docFilter, setDocFilter] = useState<'all' | 'ktp' | 'npwp' | 'nib' | 'complete' | 'incomplete'>('all');
   
   // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -75,7 +76,10 @@ export default function Suppliers() {
     ktpFileName: '',
     npwpNumber: '',
     npwpFile: '',
-    npwpFileName: ''
+    npwpFileName: '',
+    nibNumber: '',
+    nibFile: '',
+    nibFileName: ''
   });
 
   const [isProcessingFile, setIsProcessingFile] = useState(false);
@@ -91,6 +95,7 @@ export default function Suppliers() {
   // Hidden file input refs
   const ktpInputRef = useRef<HTMLInputElement>(null);
   const npwpInputRef = useRef<HTMLInputElement>(null);
+  const nibInputRef = useRef<HTMLInputElement>(null);
 
   // Access check
   const isReadOnly = false;
@@ -150,7 +155,7 @@ export default function Suppliers() {
     });
   };
 
-  const handleFileChange = async (type: 'ktp' | 'npwp', file: File | null) => {
+  const handleFileChange = async (type: 'ktp' | 'npwp' | 'nib', file: File | null) => {
     if (!file) return;
     setIsProcessingFile(true);
     setErrorMessage('');
@@ -162,11 +167,17 @@ export default function Suppliers() {
           ktpFile: result.dataUrl,
           ktpFileName: result.fileName
         }));
-      } else {
+      } else if (type === 'npwp') {
         setFormData(prev => ({
           ...prev,
           npwpFile: result.dataUrl,
           npwpFileName: result.fileName
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          nibFile: result.dataUrl,
+          nibFileName: result.fileName
         }));
       }
     } catch (err: any) {
@@ -176,13 +187,16 @@ export default function Suppliers() {
     }
   };
 
-  const handleRemoveFile = (type: 'ktp' | 'npwp') => {
+  const handleRemoveFile = (type: 'ktp' | 'npwp' | 'nib') => {
     if (type === 'ktp') {
       setFormData(prev => ({ ...prev, ktpFile: '', ktpFileName: '' }));
       if (ktpInputRef.current) ktpInputRef.current.value = '';
-    } else {
+    } else if (type === 'npwp') {
       setFormData(prev => ({ ...prev, npwpFile: '', npwpFileName: '' }));
       if (npwpInputRef.current) npwpInputRef.current.value = '';
+    } else {
+      setFormData(prev => ({ ...prev, nibFile: '', nibFileName: '' }));
+      if (nibInputRef.current) nibInputRef.current.value = '';
     }
   };
 
@@ -203,7 +217,10 @@ export default function Suppliers() {
       ktpFileName: '',
       npwpNumber: '',
       npwpFile: '',
-      npwpFileName: ''
+      npwpFileName: '',
+      nibNumber: '',
+      nibFile: '',
+      nibFileName: ''
     });
     setErrorMessage('');
     setIsFormOpen(true);
@@ -227,7 +244,10 @@ export default function Suppliers() {
       ktpFileName: s.ktpFileName || '',
       npwpNumber: s.npwpNumber || '',
       npwpFile: s.npwpFile || '',
-      npwpFileName: s.npwpFileName || ''
+      npwpFileName: s.npwpFileName || '',
+      nibNumber: s.nibNumber || '',
+      nibFile: s.nibFile || '',
+      nibFileName: s.nibFileName || ''
     });
     setErrorMessage('');
     setIsFormOpen(true);
@@ -251,7 +271,7 @@ export default function Suppliers() {
           ...formData,
           id: editingSupplier.id
         });
-        setSuccessMessage('Sukses memperbarui informasi supplier beserta dokumen KTP & NPWP!');
+        setSuccessMessage('Sukses memperbarui informasi supplier beserta dokumen KTP, NPWP & NIB!');
       } else {
         // Check duplicate code
         const codeExists = suppliers.some(s => s.code.toLowerCase() === formData.code.toLowerCase());
@@ -260,7 +280,7 @@ export default function Suppliers() {
           return;
         }
         await addSupplier(formData);
-        setSuccessMessage('Sukses menambahkan supplier baru beserta dokumen KTP & NPWP!');
+        setSuccessMessage('Sukses menambahkan supplier baru beserta dokumen KTP, NPWP & NIB!');
       }
 
       setIsFormOpen(false);
@@ -293,13 +313,18 @@ export default function Suppliers() {
 
   const handleOpenDocPreview = (
     s: Supplier, 
-    docType: 'KTP' | 'NPWP', 
+    docType: 'KTP' | 'NPWP' | 'NIB', 
     fileUrl: string, 
     fileName?: string,
     docNumber?: string
   ) => {
+    let title = `Dokumen ${docType} - ${s.name}`;
+    if (docType === 'NIB') title = `Dokumen NIB (Nomor Induk Berusaha) - ${s.name}`;
+    else if (docType === 'KTP') title = `Dokumen KTP - ${s.name}`;
+    else if (docType === 'NPWP') title = `Dokumen NPWP - ${s.name}`;
+
     setPreviewDoc({
-      title: docType === 'KTP' ? `Dokumen KTP - ${s.name}` : `Dokumen NPWP - ${s.name}`,
+      title,
       supplierName: s.name,
       supplierCode: s.code,
       docType,
@@ -374,7 +399,9 @@ export default function Suppliers() {
       'Nomor KTP/NIK',
       'Status Berkas KTP',
       'Nomor NPWP',
-      'Status Berkas NPWP'
+      'Status Berkas NPWP',
+      'Nomor NIB',
+      'Status Berkas NIB'
     ];
     const data = filteredSuppliers.map(s => [
       s.code,
@@ -389,9 +416,11 @@ export default function Suppliers() {
       s.ktpNumber || '-',
       s.ktpFile ? 'Terlampir' : 'Tidak Ada',
       s.npwpNumber || '-',
-      s.npwpFile ? 'Terlampir' : 'Tidak Ada'
+      s.npwpFile ? 'Terlampir' : 'Tidak Ada',
+      s.nibNumber || '-',
+      s.nibFile ? 'Terlampir' : 'Tidak Ada'
     ]);
-    exportToCSV('Daftar_Supplier_Lengkap_KTP_NPWP', headers, data);
+    exportToCSV('Daftar_Supplier_Lengkap_KTP_NPWP_NIB', headers, data);
   };
 
   const filteredSuppliers = suppliers.filter(s => {
@@ -404,6 +433,7 @@ export default function Suppliers() {
       s.address.toLowerCase().includes(q) ||
       (s.ktpNumber && s.ktpNumber.toLowerCase().includes(q)) ||
       (s.npwpNumber && s.npwpNumber.toLowerCase().includes(q)) ||
+      (s.nibNumber && s.nibNumber.toLowerCase().includes(q)) ||
       s.phone.toLowerCase().includes(q);
 
     if (!matchesSearch) return false;
@@ -415,11 +445,22 @@ export default function Suppliers() {
     if (docFilter === 'npwp') {
       return Boolean(s.npwpFile || s.npwpNumber);
     }
+    if (docFilter === 'nib') {
+      return Boolean(s.nibFile || s.nibNumber);
+    }
     if (docFilter === 'complete') {
-      return Boolean((s.ktpFile || s.ktpNumber) && (s.npwpFile || s.npwpNumber));
+      return Boolean(
+        (s.ktpFile || s.ktpNumber) && 
+        (s.npwpFile || s.npwpNumber) && 
+        (s.nibFile || s.nibNumber)
+      );
     }
     if (docFilter === 'incomplete') {
-      return !Boolean((s.ktpFile || s.ktpNumber) && (s.npwpFile || s.npwpNumber));
+      return !Boolean(
+        (s.ktpFile || s.ktpNumber) && 
+        (s.npwpFile || s.npwpNumber) && 
+        (s.nibFile || s.nibNumber)
+      );
     }
     return true;
   });
@@ -432,10 +473,10 @@ export default function Suppliers() {
           <h1 className="text-xl font-bold text-gray-900 font-sans flex items-center gap-2">
             <span>Database Supplier</span>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-              Legalitas KTP & NPWP
+              Legalitas KTP, NPWP & NIB
             </span>
           </h1>
-          <p className="text-xs text-gray-500">Daftar mitra bisnis, verifikasi identitas (KTP), perpajakan (NPWP), dan rincian rekening pencairan.</p>
+          <p className="text-xs text-gray-500">Daftar mitra bisnis, verifikasi identitas (KTP), perpajakan (NPWP), izin berusaha (NIB), dan rekening pencairan.</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -470,7 +511,7 @@ export default function Suppliers() {
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Cari nama, kode, NIK KTP, NPWP, narahubung..."
+            placeholder="Cari nama, kode, NIK, NPWP, NIB, kontak..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-gray-50/50 border border-gray-100 rounded-xl text-xs focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
@@ -498,7 +539,7 @@ export default function Suppliers() {
                 : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/50'
             }`}
           >
-            Lengkap KTP & NPWP
+            Lengkap (KTP, NPWP, NIB)
           </button>
           <button
             onClick={() => setDocFilter('ktp')}
@@ -521,6 +562,16 @@ export default function Suppliers() {
             Ada NPWP
           </button>
           <button
+            onClick={() => setDocFilter('nib')}
+            className={`px-2.5 py-1 rounded-lg font-medium text-[11px] transition-colors cursor-pointer ${
+              docFilter === 'nib' 
+                ? 'bg-teal-700 text-white' 
+                : 'bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200/50'
+            }`}
+          >
+            Ada NIB
+          </button>
+          <button
             onClick={() => setDocFilter('incomplete')}
             className={`px-2.5 py-1 rounded-lg font-medium text-[11px] transition-colors cursor-pointer ${
               docFilter === 'incomplete' 
@@ -534,9 +585,9 @@ export default function Suppliers() {
       </div>
 
       {/* Grid of Suppliers Cards - Bento Card Design */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {filteredSuppliers.length === 0 ? (
-          <div className="col-span-1 md:col-span-2 h-64 flex flex-col items-center justify-center border border-dashed border-gray-100 bg-white rounded-2xl p-6 text-center">
+          <div className="col-span-1 xl:col-span-2 h-64 flex flex-col items-center justify-center border border-dashed border-gray-100 bg-white rounded-2xl p-6 text-center">
             <Landmark className="w-8 h-8 text-gray-300 mb-2" />
             <p className="text-sm font-semibold text-gray-700">Hasil tidak ditemukan</p>
             <p className="text-xs text-gray-500 mt-1">Coba sesuaikan kata kunci pencarian atau filter dokumen Anda.</p>
@@ -545,6 +596,10 @@ export default function Suppliers() {
           filteredSuppliers.map((s) => {
             const hasKtp = Boolean(s.ktpFile || s.ktpNumber);
             const hasNpwp = Boolean(s.npwpFile || s.npwpNumber);
+            const hasNib = Boolean(s.nibFile || s.nibNumber);
+
+            const docCount = [hasKtp, hasNpwp, hasNib].filter(Boolean).length;
+            const isAllComplete = docCount === 3;
 
             return (
               <div key={s.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:border-gray-200 hover:shadow-sm transition-all space-y-4">
@@ -556,15 +611,15 @@ export default function Suppliers() {
                       <span className="inline-block px-2 py-0.5 rounded-md bg-indigo-50 font-mono text-[10px] font-bold text-indigo-700 tracking-wider">
                         {s.code}
                       </span>
-                      {hasKtp && hasNpwp ? (
+                      {isAllComplete ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
                           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          Berkas Lengkap
+                          Legalitas Lengkap (3/3)
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
                           <AlertCircle className="w-3 h-3 text-amber-600" />
-                          {!hasKtp && !hasNpwp ? 'KTP & NPWP Kosong' : !hasKtp ? 'KTP Belum Lengkap' : 'NPWP Belum Lengkap'}
+                          Berkas ({docCount}/3)
                         </span>
                       )}
                     </div>
@@ -638,158 +693,233 @@ export default function Suppliers() {
 
                 </div>
 
-                {/* Dedicated Legal Documents Section: KTP & NPWP */}
+                {/* Dedicated Legal Documents Section: KTP, NPWP & NIB */}
                 <div className="bg-slate-50/80 border border-slate-200/60 rounded-xl p-3 space-y-2.5">
                   <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                     <span className="flex items-center gap-1.5">
                       <FileBadge className="w-3.5 h-3.5 text-indigo-600" />
-                      Dokumen Legalitas & Pajak
+                      Dokumen Legalitas & Perpajakan
                     </span>
-                    <span className="text-[10px] font-normal text-slate-400 lowercase font-mono">
-                      {s.ktpFile && s.npwpFile ? '2/2 berkas terunggah' : s.ktpFile || s.npwpFile ? '1/2 berkas terunggah' : '0/2 berkas terunggah'}
+                    <span className="text-[10px] font-normal text-slate-500 lowercase font-mono">
+                      {[s.ktpFile, s.npwpFile, s.nibFile].filter(Boolean).length}/3 berkas terunggah
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     
-                    {/* KTP Box */}
-                    <div className="bg-white border border-slate-200/80 rounded-lg p-2.5 space-y-1.5 shadow-2xs">
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
-                          <CreditCard className="w-3 h-3 text-blue-600" />
-                          KTP / NIK
-                        </span>
-                        {s.ktpFile ? (
-                          <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-0.5">
-                            <Check className="w-2.5 h-2.5" /> Terlampir
+                    {/* 1. KTP Box */}
+                    <div className="bg-white border border-slate-200/80 rounded-lg p-2.5 space-y-1.5 shadow-2xs flex flex-col justify-between">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                            <CreditCard className="w-3 h-3 text-blue-600" />
+                            KTP / NIK
                           </span>
+                          {s.ktpFile ? (
+                            <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-100 flex items-center gap-0.5">
+                              <Check className="w-2.5 h-2.5" /> Terlampir
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-medium text-slate-400 italic">Belum Ada</span>
+                          )}
+                        </div>
+
+                        {s.ktpNumber ? (
+                          <div className="flex items-center justify-between bg-slate-50 px-1.5 py-1 rounded border border-slate-100">
+                            <span className="font-mono text-[11px] font-bold text-slate-800 tracking-wider truncate">
+                              {s.ktpNumber}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleCopy(s.ktpNumber!, e)}
+                              className="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors cursor-pointer shrink-0"
+                              title="Salin Nomor NIK"
+                            >
+                              {copiedText === s.ktpNumber ? (
+                                <Check className="w-3 h-3 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </button>
+                          </div>
                         ) : (
-                          <span className="text-[9px] font-medium text-slate-400 italic">Belum Ada File</span>
+                          <p className="text-[10px] text-slate-400 italic">NIK tidak diisi</p>
                         )}
                       </div>
 
-                      {s.ktpNumber ? (
-                        <div className="flex items-center justify-between bg-slate-50 px-2 py-1 rounded border border-slate-100">
-                          <span className="font-mono text-xs font-bold text-slate-800 tracking-wider">
-                            {s.ktpNumber}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => handleCopy(s.ktpNumber!, e)}
-                            className="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors cursor-pointer"
-                            title="Salin Nomor NIK"
-                          >
-                            {copiedText === s.ktpNumber ? (
-                              <Check className="w-3 h-3 text-emerald-600" />
-                            ) : (
-                              <Copy className="w-3 h-3" />
-                            )}
-                          </button>
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-slate-400 italic">Nomor NIK tidak diisi</p>
-                      )}
-
                       {s.ktpFile && (
-                        <div className="flex items-center gap-2 pt-1">
+                        <div className="flex items-center gap-2 pt-1 border-t border-slate-100 mt-1">
                           {s.ktpFile.startsWith('data:image/') ? (
                             <button
                               type="button"
                               onClick={() => handleOpenDocPreview(s, 'KTP', s.ktpFile!, s.ktpFileName, s.ktpNumber)}
-                              className="relative group w-12 h-8 rounded border border-slate-200 overflow-hidden shrink-0 cursor-pointer"
+                              className="relative group w-9 h-7 rounded border border-slate-200 overflow-hidden shrink-0 cursor-pointer"
                               title="Klik untuk memperbesar KTP"
                             >
                               <img src={s.ktpFile} alt="KTP Thumbnail" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                               <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                <Eye className="w-3.5 h-3.5 text-white" />
+                                <Eye className="w-3 h-3 text-white" />
                               </div>
                             </button>
                           ) : (
-                            <div className="w-12 h-8 bg-red-50 border border-red-200 rounded flex items-center justify-center text-red-600 shrink-0">
-                              <FileText className="w-4 h-4" />
+                            <div className="w-9 h-7 bg-red-50 border border-red-200 rounded flex items-center justify-center text-red-600 shrink-0 font-bold text-[9px]">
+                              PDF
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-[10px] text-slate-600 truncate font-mono">{s.ktpFileName || 'Dokumen_KTP'}</p>
                             <button
                               type="button"
                               onClick={() => handleOpenDocPreview(s, 'KTP', s.ktpFile!, s.ktpFileName, s.ktpNumber)}
-                              className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 cursor-pointer"
+                              className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 cursor-pointer truncate"
                             >
-                              <Eye className="w-3 h-3" />
-                              Lihat Dokumen
+                              <Eye className="w-3 h-3 shrink-0" />
+                              <span className="truncate">Lihat Dokumen</span>
                             </button>
                           </div>
                         </div>
                       )}
                     </div>
 
-                    {/* NPWP Box */}
-                    <div className="bg-white border border-slate-200/80 rounded-lg p-2.5 space-y-1.5 shadow-2xs">
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">
-                          <FileCheck className="w-3 h-3 text-purple-600" />
-                          NPWP
-                        </span>
-                        {s.npwpFile ? (
-                          <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-0.5">
-                            <Check className="w-2.5 h-2.5" /> Terlampir
+                    {/* 2. NPWP Box */}
+                    <div className="bg-white border border-slate-200/80 rounded-lg p-2.5 space-y-1.5 shadow-2xs flex flex-col justify-between">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">
+                            <FileCheck className="w-3 h-3 text-purple-600" />
+                            NPWP
                           </span>
+                          {s.npwpFile ? (
+                            <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-100 flex items-center gap-0.5">
+                              <Check className="w-2.5 h-2.5" /> Terlampir
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-medium text-slate-400 italic">Belum Ada</span>
+                          )}
+                        </div>
+
+                        {s.npwpNumber ? (
+                          <div className="flex items-center justify-between bg-slate-50 px-1.5 py-1 rounded border border-slate-100">
+                            <span className="font-mono text-[11px] font-bold text-slate-800 tracking-wider truncate">
+                              {s.npwpNumber}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleCopy(s.npwpNumber!, e)}
+                              className="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors cursor-pointer shrink-0"
+                              title="Salin Nomor NPWP"
+                            >
+                              {copiedText === s.npwpNumber ? (
+                                <Check className="w-3 h-3 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </button>
+                          </div>
                         ) : (
-                          <span className="text-[9px] font-medium text-slate-400 italic">Belum Ada File</span>
+                          <p className="text-[10px] text-slate-400 italic">NPWP tidak diisi</p>
                         )}
                       </div>
 
-                      {s.npwpNumber ? (
-                        <div className="flex items-center justify-between bg-slate-50 px-2 py-1 rounded border border-slate-100">
-                          <span className="font-mono text-xs font-bold text-slate-800 tracking-wider">
-                            {s.npwpNumber}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => handleCopy(s.npwpNumber!, e)}
-                            className="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors cursor-pointer"
-                            title="Salin Nomor NPWP"
-                          >
-                            {copiedText === s.npwpNumber ? (
-                              <Check className="w-3 h-3 text-emerald-600" />
-                            ) : (
-                              <Copy className="w-3 h-3" />
-                            )}
-                          </button>
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-slate-400 italic">Nomor NPWP tidak diisi</p>
-                      )}
-
                       {s.npwpFile && (
-                        <div className="flex items-center gap-2 pt-1">
+                        <div className="flex items-center gap-2 pt-1 border-t border-slate-100 mt-1">
                           {s.npwpFile.startsWith('data:image/') ? (
                             <button
                               type="button"
                               onClick={() => handleOpenDocPreview(s, 'NPWP', s.npwpFile!, s.npwpFileName, s.npwpNumber)}
-                              className="relative group w-12 h-8 rounded border border-slate-200 overflow-hidden shrink-0 cursor-pointer"
+                              className="relative group w-9 h-7 rounded border border-slate-200 overflow-hidden shrink-0 cursor-pointer"
                               title="Klik untuk memperbesar NPWP"
                             >
                               <img src={s.npwpFile} alt="NPWP Thumbnail" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                               <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                <Eye className="w-3.5 h-3.5 text-white" />
+                                <Eye className="w-3 h-3 text-white" />
                               </div>
                             </button>
                           ) : (
-                            <div className="w-12 h-8 bg-red-50 border border-red-200 rounded flex items-center justify-center text-red-600 shrink-0">
-                              <FileText className="w-4 h-4" />
+                            <div className="w-9 h-7 bg-red-50 border border-red-200 rounded flex items-center justify-center text-red-600 shrink-0 font-bold text-[9px]">
+                              PDF
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-[10px] text-slate-600 truncate font-mono">{s.npwpFileName || 'Dokumen_NPWP'}</p>
                             <button
                               type="button"
                               onClick={() => handleOpenDocPreview(s, 'NPWP', s.npwpFile!, s.npwpFileName, s.npwpNumber)}
-                              className="text-[10px] font-semibold text-purple-600 hover:text-purple-800 hover:underline flex items-center gap-1 cursor-pointer"
+                              className="text-[10px] font-semibold text-purple-600 hover:text-purple-800 hover:underline flex items-center gap-1 cursor-pointer truncate"
                             >
-                              <Eye className="w-3 h-3" />
-                              Lihat Dokumen
+                              <Eye className="w-3 h-3 shrink-0" />
+                              <span className="truncate">Lihat Dokumen</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 3. NIB Box (Nomor Induk Berusaha) */}
+                    <div className="bg-white border border-slate-200/80 rounded-lg p-2.5 space-y-1.5 shadow-2xs flex flex-col justify-between">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded">
+                            <Briefcase className="w-3 h-3 text-teal-600" />
+                            NIB (Izin)
+                          </span>
+                          {s.nibFile ? (
+                            <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-100 flex items-center gap-0.5">
+                              <Check className="w-2.5 h-2.5" /> Terlampir
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-medium text-slate-400 italic">Belum Ada</span>
+                          )}
+                        </div>
+
+                        {s.nibNumber ? (
+                          <div className="flex items-center justify-between bg-slate-50 px-1.5 py-1 rounded border border-slate-100">
+                            <span className="font-mono text-[11px] font-bold text-slate-800 tracking-wider truncate">
+                              {s.nibNumber}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleCopy(s.nibNumber!, e)}
+                              className="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors cursor-pointer shrink-0"
+                              title="Salin Nomor NIB"
+                            >
+                              {copiedText === s.nibNumber ? (
+                                <Check className="w-3 h-3 text-emerald-600" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-slate-400 italic">NIB tidak diisi</p>
+                        )}
+                      </div>
+
+                      {s.nibFile && (
+                        <div className="flex items-center gap-2 pt-1 border-t border-slate-100 mt-1">
+                          {s.nibFile.startsWith('data:image/') ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDocPreview(s, 'NIB', s.nibFile!, s.nibFileName, s.nibNumber)}
+                              className="relative group w-9 h-7 rounded border border-slate-200 overflow-hidden shrink-0 cursor-pointer"
+                              title="Klik untuk memperbesar NIB"
+                            >
+                              <img src={s.nibFile} alt="NIB Thumbnail" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <Eye className="w-3 h-3 text-white" />
+                              </div>
+                            </button>
+                          ) : (
+                            <div className="w-9 h-7 bg-red-50 border border-red-200 rounded flex items-center justify-center text-red-600 shrink-0 font-bold text-[9px]">
+                              PDF
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDocPreview(s, 'NIB', s.nibFile!, s.nibFileName, s.nibNumber)}
+                              className="text-[10px] font-semibold text-teal-600 hover:text-teal-800 hover:underline flex items-center gap-1 cursor-pointer truncate"
+                            >
+                              <Eye className="w-3 h-3 shrink-0" />
+                              <span className="truncate">Lihat Dokumen</span>
                             </button>
                           </div>
                         </div>
@@ -814,15 +944,15 @@ export default function Suppliers() {
       {/* Slide-over / Modal Form for Adding & Editing Supplier */}
       {isFormOpen && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden border border-gray-100 max-h-[92vh] flex flex-col">
+          <div className="bg-white rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden border border-gray-100 max-h-[92vh] flex flex-col">
             
             {/* Modal Header */}
             <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50">
               <div>
                 <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
-                  {editingSupplier ? 'Ubah Informasi Supplier & Dokumen' : 'Daftarkan Supplier Baru'}
+                  {editingSupplier ? 'Ubah Informasi Supplier & Dokumen Legalitas' : 'Daftarkan Supplier Baru'}
                 </h3>
-                <p className="text-xs text-gray-500">Lengkapi data mitra, rekening bank pencairan, serta lampiran KTP dan NPWP.</p>
+                <p className="text-xs text-gray-500">Lengkapi data mitra, rekening bank pencairan, serta lampiran KTP, NPWP, dan NIB.</p>
               </div>
               <button 
                 onClick={() => setIsFormOpen(false)} 
@@ -910,44 +1040,44 @@ export default function Suppliers() {
                 </div>
               </div>
 
-              {/* DOKUMEN IDENTITAS & PERPAJAKAN (KTP & NPWP) */}
-              <div className="bg-gradient-to-br from-indigo-50/40 via-purple-50/20 to-slate-50/60 p-4 rounded-2xl border border-indigo-100 space-y-4">
+              {/* DOKUMEN IDENTITAS & PERPAJAKAN (KTP, NPWP & NIB) */}
+              <div className="bg-gradient-to-br from-indigo-50/40 via-purple-50/20 to-teal-50/30 p-4 rounded-2xl border border-indigo-100 space-y-4">
                 <div>
                   <h4 className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
                     <FileBadge className="w-4 h-4 text-indigo-600" />
-                    Dokumen Legalitas & Perpajakan (KTP & NPWP)
+                    Dokumen Legalitas & Perpajakan (KTP, NPWP & NIB)
                   </h4>
                   <p className="text-[11px] text-gray-500 mt-0.5">
-                    Unggah berkas KTP (Kartu Tanda Penduduk) dan NPWP untuk arsip verifikasi faktur & bukti transaksi. Format yang didukung: JPG, PNG, WebP, atau PDF.
+                    Unggah berkas KTP (Kartu Tanda Penduduk), NPWP, dan NIB (Nomor Induk Berusaha) untuk arsip verifikasi faktur & legalitas usaha. Format yang didukung: JPG, PNG, WebP, atau PDF (Maks. 850 KB).
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                   
-                  {/* --- KTP Upload & Nomor NIK --- */}
-                  <div className="bg-white border border-indigo-100 rounded-xl p-3.5 space-y-3 shadow-2xs">
+                  {/* --- 1. KTP Upload & Nomor NIK --- */}
+                  <div className="bg-white border border-blue-100 rounded-xl p-3 space-y-2.5 shadow-2xs">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
                         <CreditCard className="w-3.5 h-3.5 text-blue-600" />
                         Identitas KTP (NIK)
                       </span>
                       {formData.ktpFile && (
-                        <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                          File Siap Disimpan
+                        <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
+                          Siap
                         </span>
                       )}
                     </div>
 
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider block">
-                        Nomor KTP / NIK (16 Digit)
+                        Nomor NIK (16 Digit)
                       </label>
                       <input
                         type="text"
                         value={formData.ktpNumber}
                         onChange={(e) => setFormData({...formData, ktpNumber: e.target.value})}
-                        placeholder="Contoh: 350612xxxxxxxxxx"
-                        className="w-full border border-gray-200 bg-white rounded-xl px-3 py-1.5 text-xs font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-hidden"
+                        placeholder="350612xxxxxxxxxx"
+                        className="w-full border border-gray-200 bg-white rounded-xl px-2.5 py-1.5 text-xs font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-hidden"
                       />
                     </div>
 
@@ -969,35 +1099,35 @@ export default function Suppliers() {
                           e.preventDefault();
                           handleFileChange('ktp', e.dataTransfer.files?.[0] || null);
                         }}
-                        className="border-2 border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/30 hover:bg-blue-50/60 rounded-xl p-4 text-center cursor-pointer transition-colors"
+                        className="border-2 border-dashed border-blue-200 hover:border-blue-400 bg-blue-50/30 hover:bg-blue-50/60 rounded-xl p-3 text-center cursor-pointer transition-colors"
                       >
-                        <UploadCloud className="w-6 h-6 text-blue-500 mx-auto mb-1" />
-                        <p className="text-xs font-semibold text-blue-900">Pilih / Seret Foto KTP</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">JPG, PNG, WebP atau PDF (Maks. 850 KB)</p>
+                        <UploadCloud className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+                        <p className="text-[11px] font-semibold text-blue-900">Pilih Berkas KTP</p>
+                        <p className="text-[9px] text-gray-400 mt-0.5">JPG, PNG atau PDF</p>
                       </div>
                     ) : (
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2">
-                        <div className="flex items-center gap-2.5">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 space-y-1.5">
+                        <div className="flex items-center gap-2">
                           {formData.ktpFile.startsWith('data:image/') ? (
                             <img 
                               src={formData.ktpFile} 
                               alt="Preview KTP" 
-                              className="w-14 h-10 object-cover rounded-lg border border-slate-300 shrink-0" 
+                              className="w-12 h-8 object-cover rounded border border-slate-300 shrink-0" 
                             />
                           ) : (
-                            <div className="w-14 h-10 bg-red-100 text-red-600 rounded-lg flex items-center justify-center font-bold text-xs shrink-0">
+                            <div className="w-12 h-8 bg-red-100 text-red-600 rounded flex items-center justify-center font-bold text-[10px] shrink-0">
                               PDF
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-gray-800 truncate font-mono">
+                            <p className="text-[11px] font-semibold text-gray-800 truncate font-mono">
                               {formData.ktpFileName || 'Foto_KTP.jpg'}
                             </p>
-                            <p className="text-[10px] text-emerald-600 font-medium">Dokumen terlampir</p>
+                            <p className="text-[9px] text-emerald-600 font-medium">Terlampir</p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 pt-1 border-t border-slate-200/80">
+                        <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/80 text-[10px]">
                           <button
                             type="button"
                             onClick={() => {
@@ -1009,7 +1139,7 @@ export default function Suppliers() {
                                 formData.ktpNumber
                               );
                             }}
-                            className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer"
+                            className="text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-0.5 cursor-pointer"
                           >
                             <Eye className="w-3 h-3" />
                             Preview
@@ -1018,18 +1148,16 @@ export default function Suppliers() {
                           <button
                             type="button"
                             onClick={() => ktpInputRef.current?.click()}
-                            className="text-[11px] text-gray-600 hover:text-gray-900 font-semibold flex items-center gap-1 cursor-pointer"
+                            className="text-gray-600 hover:text-gray-900 font-semibold cursor-pointer"
                           >
-                            <RefreshCw className="w-3 h-3" />
                             Ganti
                           </button>
                           <span className="text-gray-300">|</span>
                           <button
                             type="button"
                             onClick={() => handleRemoveFile('ktp')}
-                            className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1 cursor-pointer ml-auto"
+                            className="text-rose-600 hover:text-rose-800 font-semibold cursor-pointer ml-auto"
                           >
-                            <Trash2 className="w-3 h-3" />
                             Hapus
                           </button>
                         </div>
@@ -1037,30 +1165,30 @@ export default function Suppliers() {
                     )}
                   </div>
 
-                  {/* --- NPWP Upload & Nomor Pajak --- */}
-                  <div className="bg-white border border-purple-100 rounded-xl p-3.5 space-y-3 shadow-2xs">
+                  {/* --- 2. NPWP Upload & Nomor Pajak --- */}
+                  <div className="bg-white border border-purple-100 rounded-xl p-3 space-y-2.5 shadow-2xs">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
                         <FileCheck className="w-3.5 h-3.5 text-purple-600" />
                         Perpajakan (NPWP)
                       </span>
                       {formData.npwpFile && (
-                        <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                          File Siap Disimpan
+                        <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
+                          Siap
                         </span>
                       )}
                     </div>
 
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider block">
-                        Nomor Pokok Wajib Pajak (NPWP)
+                        Nomor Pokok NPWP
                       </label>
                       <input
                         type="text"
                         value={formData.npwpNumber}
                         onChange={(e) => setFormData({...formData, npwpNumber: e.target.value})}
-                        placeholder="Contoh: 01.234.567.8-901.000"
-                        className="w-full border border-gray-200 bg-white rounded-xl px-3 py-1.5 text-xs font-mono focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-hidden"
+                        placeholder="01.234.567.8-901.000"
+                        className="w-full border border-gray-200 bg-white rounded-xl px-2.5 py-1.5 text-xs font-mono focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-hidden"
                       />
                     </div>
 
@@ -1082,35 +1210,35 @@ export default function Suppliers() {
                           e.preventDefault();
                           handleFileChange('npwp', e.dataTransfer.files?.[0] || null);
                         }}
-                        className="border-2 border-dashed border-purple-200 hover:border-purple-400 bg-purple-50/30 hover:bg-purple-50/60 rounded-xl p-4 text-center cursor-pointer transition-colors"
+                        className="border-2 border-dashed border-purple-200 hover:border-purple-400 bg-purple-50/30 hover:bg-purple-50/60 rounded-xl p-3 text-center cursor-pointer transition-colors"
                       >
-                        <UploadCloud className="w-6 h-6 text-purple-500 mx-auto mb-1" />
-                        <p className="text-xs font-semibold text-purple-900">Pilih / Seret File NPWP</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">JPG, PNG, WebP atau PDF (Maks. 850 KB)</p>
+                        <UploadCloud className="w-5 h-5 text-purple-500 mx-auto mb-1" />
+                        <p className="text-[11px] font-semibold text-purple-900">Pilih Berkas NPWP</p>
+                        <p className="text-[9px] text-gray-400 mt-0.5">JPG, PNG atau PDF</p>
                       </div>
                     ) : (
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2">
-                        <div className="flex items-center gap-2.5">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 space-y-1.5">
+                        <div className="flex items-center gap-2">
                           {formData.npwpFile.startsWith('data:image/') ? (
                             <img 
                               src={formData.npwpFile} 
                               alt="Preview NPWP" 
-                              className="w-14 h-10 object-cover rounded-lg border border-slate-300 shrink-0" 
+                              className="w-12 h-8 object-cover rounded border border-slate-300 shrink-0" 
                             />
                           ) : (
-                            <div className="w-14 h-10 bg-red-100 text-red-600 rounded-lg flex items-center justify-center font-bold text-xs shrink-0">
+                            <div className="w-12 h-8 bg-red-100 text-red-600 rounded flex items-center justify-center font-bold text-[10px] shrink-0">
                               PDF
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-gray-800 truncate font-mono">
+                            <p className="text-[11px] font-semibold text-gray-800 truncate font-mono">
                               {formData.npwpFileName || 'Dokumen_NPWP.jpg'}
                             </p>
-                            <p className="text-[10px] text-emerald-600 font-medium">Dokumen terlampir</p>
+                            <p className="text-[9px] text-emerald-600 font-medium">Terlampir</p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 pt-1 border-t border-slate-200/80">
+                        <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/80 text-[10px]">
                           <button
                             type="button"
                             onClick={() => {
@@ -1122,7 +1250,7 @@ export default function Suppliers() {
                                 formData.npwpNumber
                               );
                             }}
-                            className="text-[11px] text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1 cursor-pointer"
+                            className="text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-0.5 cursor-pointer"
                           >
                             <Eye className="w-3 h-3" />
                             Preview
@@ -1131,18 +1259,127 @@ export default function Suppliers() {
                           <button
                             type="button"
                             onClick={() => npwpInputRef.current?.click()}
-                            className="text-[11px] text-gray-600 hover:text-gray-900 font-semibold flex items-center gap-1 cursor-pointer"
+                            className="text-gray-600 hover:text-gray-900 font-semibold cursor-pointer"
                           >
-                            <RefreshCw className="w-3 h-3" />
                             Ganti
                           </button>
                           <span className="text-gray-300">|</span>
                           <button
                             type="button"
                             onClick={() => handleRemoveFile('npwp')}
-                            className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1 cursor-pointer ml-auto"
+                            className="text-rose-600 hover:text-rose-800 font-semibold cursor-pointer ml-auto"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            Hapus
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* --- 3. NIB Upload & Nomor Induk Berusaha --- */}
+                  <div className="bg-white border border-teal-100 rounded-xl p-3 space-y-2.5 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-teal-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <Briefcase className="w-3.5 h-3.5 text-teal-600" />
+                        Izin Usaha (NIB)
+                      </span>
+                      {formData.nibFile && (
+                        <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
+                          Siap
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider block">
+                        Nomor NIB (13 Digit)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.nibNumber}
+                        onChange={(e) => setFormData({...formData, nibNumber: e.target.value})}
+                        placeholder="Contoh: 0123456789012"
+                        className="w-full border border-gray-200 bg-white rounded-xl px-2.5 py-1.5 text-xs font-mono focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden"
+                      />
+                    </div>
+
+                    {/* Hidden input */}
+                    <input
+                      type="file"
+                      ref={nibInputRef}
+                      onChange={(e) => handleFileChange('nib', e.target.files?.[0] || null)}
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      className="hidden"
+                    />
+
+                    {/* Dropzone / Upload area */}
+                    {!formData.nibFile ? (
+                      <div
+                        onClick={() => nibInputRef.current?.click()}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          handleFileChange('nib', e.dataTransfer.files?.[0] || null);
+                        }}
+                        className="border-2 border-dashed border-teal-200 hover:border-teal-400 bg-teal-50/30 hover:bg-teal-50/60 rounded-xl p-3 text-center cursor-pointer transition-colors"
+                      >
+                        <UploadCloud className="w-5 h-5 text-teal-500 mx-auto mb-1" />
+                        <p className="text-[11px] font-semibold text-teal-900">Pilih Berkas NIB</p>
+                        <p className="text-[9px] text-gray-400 mt-0.5">JPG, PNG atau PDF</p>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          {formData.nibFile.startsWith('data:image/') ? (
+                            <img 
+                              src={formData.nibFile} 
+                              alt="Preview NIB" 
+                              className="w-12 h-8 object-cover rounded border border-slate-300 shrink-0" 
+                            />
+                          ) : (
+                            <div className="w-12 h-8 bg-red-100 text-red-600 rounded flex items-center justify-center font-bold text-[10px] shrink-0">
+                              PDF
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-semibold text-gray-800 truncate font-mono">
+                              {formData.nibFileName || 'Dokumen_NIB.jpg'}
+                            </p>
+                            <p className="text-[9px] text-emerald-600 font-medium">Terlampir</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/80 text-[10px]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleOpenDocPreview(
+                                { name: formData.name || 'Supplier', code: formData.code || 'SUP' } as Supplier,
+                                'NIB',
+                                formData.nibFile,
+                                formData.nibFileName,
+                                formData.nibNumber
+                              );
+                            }}
+                            className="text-teal-600 hover:text-teal-800 font-semibold flex items-center gap-0.5 cursor-pointer"
+                          >
+                            <Eye className="w-3 h-3" />
+                            Preview
+                          </button>
+                          <span className="text-gray-300">|</span>
+                          <button
+                            type="button"
+                            onClick={() => nibInputRef.current?.click()}
+                            className="text-gray-600 hover:text-gray-900 font-semibold cursor-pointer"
+                          >
+                            Ganti
+                          </button>
+                          <span className="text-gray-300">|</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile('nib')}
+                            className="text-rose-600 hover:text-rose-800 font-semibold cursor-pointer ml-auto"
+                          >
                             Hapus
                           </button>
                         </div>
@@ -1241,7 +1478,7 @@ export default function Suppliers() {
         </div>
       )}
 
-      {/* Lightbox / Modal for Document Preview (KTP & NPWP) */}
+      {/* Lightbox / Modal for Document Preview (KTP, NPWP & NIB) */}
       {previewDoc && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 z-60 animate-fade-in">
           <div className="bg-slate-900 border border-slate-700/80 rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col overflow-hidden max-h-[92vh]">
@@ -1252,7 +1489,9 @@ export default function Suppliers() {
                 <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
                   previewDoc.docType === 'KTP' 
                     ? 'bg-blue-600/30 text-blue-400 border border-blue-500/40' 
-                    : 'bg-purple-600/30 text-purple-400 border border-purple-500/40'
+                    : previewDoc.docType === 'NPWP'
+                    ? 'bg-purple-600/30 text-purple-400 border border-purple-500/40'
+                    : 'bg-teal-600/30 text-teal-400 border border-teal-500/40'
                 }`}>
                   {previewDoc.docType}
                 </span>
@@ -1389,7 +1628,7 @@ export default function Suppliers() {
 
             {/* Lightbox Footer */}
             <div className="p-3 border-t border-slate-800 text-[11px] text-slate-400 bg-slate-950/80 flex items-center justify-between">
-              <span>Arsip resmi verifikasi data supplier untuk keperluan administrasi dan pencatatan pajak.</span>
+              <span>Arsip resmi verifikasi data supplier untuk keperluan administrasi dan pencatatan pajak/legalitas usaha.</span>
               <span className="font-mono text-[10px] text-slate-500">{previewDoc.fileName || 'dokumen'}</span>
             </div>
 
