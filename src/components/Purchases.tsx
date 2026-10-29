@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useAppState } from '../context/StateContext';
 import { Purchase, PurchaseItem, PurchaseStatus, PaymentMethod, Payment } from '../types';
-import { formatRupiah, formatDate, exportToCSV, matchSearchFields, toRomanMonth } from '../data';
+import { formatRupiah, formatDate, exportToCSV, matchSearchFields, toRomanMonth, convertInvoiceMonthToRoman } from '../data';
 import { Plus, Search, Eye, Trash2, Calendar, FileText, ShoppingCart, Percent, DollarSign, X, CheckCircle, Clock, AlertTriangle, FileSpreadsheet, Printer, Edit } from 'lucide-react';
 import BankReceiptModal from './BankReceiptModal';
 
@@ -164,7 +164,7 @@ export default function Purchases() {
   const handleOpenEditForm = (p: Purchase) => {
     setEditingPurchaseId(p.id);
     setFormSupplierId(p.supplierId);
-    setFormInvoiceNumber(p.invoiceNumber);
+    setFormInvoiceNumber(convertInvoiceMonthToRoman(p.invoiceNumber));
     setFormPurchaseDate(p.purchaseDate);
     setFormDueDate(p.dueDate);
     setFormNotes(p.notes || '');
@@ -269,7 +269,7 @@ export default function Purchases() {
 
     const purchasePayload = {
       supplierId: formSupplierId,
-      invoiceNumber: formInvoiceNumber,
+      invoiceNumber: convertInvoiceMonthToRoman(formInvoiceNumber.trim()),
       purchaseDate: formPurchaseDate,
       dueDate: formDueDate,
       items: compiledItems,

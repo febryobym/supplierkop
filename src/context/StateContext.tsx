@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { User, Supplier, Purchase, PurchaseItem, Payment, ActivityLog, Notification, UserRole, PurchaseStatus, PaymentMethod, Product } from '../types';
-import { INITIAL_SUPPLIERS, INITIAL_PURCHASES, INITIAL_PAYMENTS, INITIAL_LOGS, PREDEFINED_USERS } from '../data';
+import { INITIAL_SUPPLIERS, INITIAL_PURCHASES, INITIAL_PAYMENTS, INITIAL_LOGS, PREDEFINED_USERS, convertInvoiceMonthToRoman, replaceInvoiceMonthsWithRoman } from '../data';
 import { 
   collection, 
   doc, 
@@ -239,9 +239,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const pList = savedPurchases ? JSON.parse(savedPurchases) : INITIAL_PURCHASES;
     const cleanPurchases = Array.isArray(pList) ? pList.filter((p: Purchase) => !['pur-1', 'pur-2', 'pur-3', 'pur-4'].includes(p.id)) : INITIAL_PURCHASES;
     cleanPurchases.forEach((p: Purchase) => {
-      if (p.invoiceNumber === 'INV/2026/10/01209') {
-        p.invoiceNumber = 'INV/2026/X/01209';
-      }
+      p.invoiceNumber = convertInvoiceMonthToRoman(p.invoiceNumber);
     });
     setPurchases(cleanPurchases);
 
@@ -661,9 +659,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (['pur-1', 'pur-2', 'pur-3', 'pur-4'].includes(data.id)) {
           deleteDoc(doc(db, 'purchases', data.id)).catch(() => {});
         } else {
-          if (data.invoiceNumber === 'INV/2026/10/01209') {
-            data.invoiceNumber = 'INV/2026/X/01209';
-            updateDoc(doc(db, 'purchases', data.id), { invoiceNumber: 'INV/2026/X/01209' }).catch(() => {});
+          const romanInvoice = convertInvoiceMonthToRoman(data.invoiceNumber);
+          if (romanInvoice !== data.invoiceNumber) {
+            data.invoiceNumber = romanInvoice;
+            updateDoc(doc(db, 'purchases', data.id), { invoiceNumber: romanInvoice }).catch(() => {});
           }
           list.push(data);
         }
@@ -682,10 +681,12 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (['pay-1', 'pay-2'].includes(data.id)) {
           deleteDoc(doc(db, 'payments', data.id)).catch(() => {});
         } else {
-          if (data.notes && data.notes.includes('INV/2026/10/01209')) {
-            const updatedNotes = data.notes.replaceAll('INV/2026/10/01209', 'INV/2026/X/01209');
-            data.notes = updatedNotes;
-            updateDoc(doc(db, 'payments', data.id), { notes: updatedNotes }).catch(() => {});
+          if (data.notes) {
+            const updatedNotes = replaceInvoiceMonthsWithRoman(data.notes);
+            if (updatedNotes !== data.notes) {
+              data.notes = updatedNotes;
+              updateDoc(doc(db, 'payments', data.id), { notes: updatedNotes }).catch(() => {});
+            }
           }
           list.push(data);
         }
@@ -1027,6 +1028,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const newPurchase: Purchase = {
       ...purchaseData,
       id,
+      invoiceNumber: convertInvoiceMonthToRoman(purchaseData.invoiceNumber),
       paidAmount: newPurchasePaid,
       remainingAmount: newPurchaseRemaining,
       status: newPurchaseStatus,
@@ -1205,6 +1207,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const updatedPurchase: Purchase = {
       ...existing,
       ...purchaseData,
+      invoiceNumber: convertInvoiceMonthToRoman(purchaseData.invoiceNumber),
       paidAmount: newPurchasePaid,
       remainingAmount: newPurchaseRemaining,
       status: newPurchaseStatus
