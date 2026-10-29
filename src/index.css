@@ -36,3 +36,17 @@
   stroke: #011e4d !important;
 }
 
+/* Custom text selection highlight color - Yellow */
+::selection,
+*::selection {
+  background-color: #fde047 !important;
+  color: #000000 !important;
+}
+
+::-moz-selection,
+*::-moz-selection {
+  background-color: #fde047 !important;
+  color: #000000 !important;
+}
+
+
