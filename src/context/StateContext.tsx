@@ -237,7 +237,13 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const savedPurchases = localStorage.getItem('sh_purchases');
     const pList = savedPurchases ? JSON.parse(savedPurchases) : INITIAL_PURCHASES;
-    setPurchases(Array.isArray(pList) ? pList.filter((p: Purchase) => !['pur-1', 'pur-2', 'pur-3', 'pur-4'].includes(p.id)) : INITIAL_PURCHASES);
+    const cleanPurchases = Array.isArray(pList) ? pList.filter((p: Purchase) => !['pur-1', 'pur-2', 'pur-3', 'pur-4'].includes(p.id)) : INITIAL_PURCHASES;
+    cleanPurchases.forEach((p: Purchase) => {
+      if (p.invoiceNumber === 'INV/2026/10/01209') {
+        p.invoiceNumber = 'INV/2026/X/01209';
+      }
+    });
+    setPurchases(cleanPurchases);
 
     const savedPayments = localStorage.getItem('sh_payments');
     const payList = savedPayments ? JSON.parse(savedPayments) : INITIAL_PAYMENTS;
@@ -655,6 +661,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (['pur-1', 'pur-2', 'pur-3', 'pur-4'].includes(data.id)) {
           deleteDoc(doc(db, 'purchases', data.id)).catch(() => {});
         } else {
+          if (data.invoiceNumber === 'INV/2026/10/01209') {
+            data.invoiceNumber = 'INV/2026/X/01209';
+            updateDoc(doc(db, 'purchases', data.id), { invoiceNumber: 'INV/2026/X/01209' }).catch(() => {});
+          }
           list.push(data);
         }
       });
@@ -672,6 +682,11 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (['pay-1', 'pay-2'].includes(data.id)) {
           deleteDoc(doc(db, 'payments', data.id)).catch(() => {});
         } else {
+          if (data.notes && data.notes.includes('INV/2026/10/01209')) {
+            const updatedNotes = data.notes.replaceAll('INV/2026/10/01209', 'INV/2026/X/01209');
+            data.notes = updatedNotes;
+            updateDoc(doc(db, 'payments', data.id), { notes: updatedNotes }).catch(() => {});
+          }
           list.push(data);
         }
       });

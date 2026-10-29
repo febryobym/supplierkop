@@ -51,6 +51,11 @@ export const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleDateString('id-ID', options);
 };
 
+export const toRomanMonth = (monthNumber: number): string => {
+  const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+  return romanMonths[monthNumber - 1] || 'I';
+};
+
 /**
  * Utility to match search queries against a set of text fields.
  * Performs word-prefix matching so searching "gas" or "ga" matches words starting with "gas" or "ga"
