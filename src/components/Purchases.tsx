@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useAppState } from '../context/StateContext';
 import { Purchase, PurchaseItem, PurchaseStatus, PaymentMethod, Payment } from '../types';
-import { formatRupiah, formatDate, exportToCSV, matchSearchFields, toRomanMonth, convertInvoiceMonthToRoman } from '../data';
+import { formatRupiah, formatDate, exportToCSV, matchSearchFields } from '../data';
 import { Plus, Search, Eye, Trash2, Calendar, FileText, ShoppingCart, Percent, DollarSign, X, CheckCircle, Clock, AlertTriangle, FileSpreadsheet, Printer, Edit } from 'lucide-react';
 import BankReceiptModal from './BankReceiptModal';
 
@@ -139,8 +139,7 @@ export default function Purchases() {
     }
     setEditingPurchaseId(null);
     setFormSupplierId(suppliers[0].id);
-    const romanMonth = toRomanMonth(new Date().getMonth() + 1);
-    setFormInvoiceNumber(`INV/${new Date().getFullYear()}/${romanMonth}/0${purchases.length + 101}`);
+    setFormInvoiceNumber(`INV/${new Date().getFullYear()}/${(new Date().getMonth() + 1).toString().padStart(2, '0')}/0${purchases.length + 101}`);
     setFormPurchaseDate(new Date().toISOString().split('T')[0]);
     
     const d = new Date();
@@ -164,7 +163,7 @@ export default function Purchases() {
   const handleOpenEditForm = (p: Purchase) => {
     setEditingPurchaseId(p.id);
     setFormSupplierId(p.supplierId);
-    setFormInvoiceNumber(convertInvoiceMonthToRoman(p.invoiceNumber));
+    setFormInvoiceNumber(p.invoiceNumber);
     setFormPurchaseDate(p.purchaseDate);
     setFormDueDate(p.dueDate);
     setFormNotes(p.notes || '');
@@ -269,7 +268,7 @@ export default function Purchases() {
 
     const purchasePayload = {
       supplierId: formSupplierId,
-      invoiceNumber: convertInvoiceMonthToRoman(formInvoiceNumber.trim()),
+      invoiceNumber: formInvoiceNumber,
       purchaseDate: formPurchaseDate,
       dueDate: formDueDate,
       items: compiledItems,
@@ -741,7 +740,7 @@ export default function Purchases() {
                     required
                     value={formInvoiceNumber}
                     onChange={(e) => setFormInvoiceNumber(e.target.value)}
-                    placeholder="INV/2026/X/xxxx"
+                    placeholder="INV/2026/06/xxxx"
                     className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-hidden font-mono font-semibold"
                   />
                 </div>

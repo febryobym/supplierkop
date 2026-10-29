@@ -51,43 +51,6 @@ export const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleDateString('id-ID', options);
 };
 
-export const toRomanMonth = (monthNumber: number): string => {
-  const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-  return romanMonths[monthNumber - 1] || 'I';
-};
-
-/**
- * Converts any invoice number with a numeric month to Roman numerals.
- * E.g., "INV/2026/10/01209" -> "INV/2026/X/01209"
- * E.g., "INV/2026/01/01101" -> "INV/2026/I/01101"
- */
-export const convertInvoiceMonthToRoman = (invoiceNum: string): string => {
-  if (!invoiceNum) return invoiceNum;
-  const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-  return invoiceNum.replace(/^([A-Za-z0-9_-]+\/\d{4}\/)(\d{1,2})(\/.*)$/, (match, prefix, monthStr, rest) => {
-    const monthNum = parseInt(monthStr, 10);
-    if (monthNum >= 1 && monthNum <= 12) {
-      return `${prefix}${romanMonths[monthNum - 1]}${rest}`;
-    }
-    return match;
-  });
-};
-
-/**
- * Replaces any invoice number occurrence in a string or notes with Roman numerals for the month.
- */
-export const replaceInvoiceMonthsWithRoman = (text: string): string => {
-  if (!text) return text;
-  const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-  return text.replace(/\b(INV\/\d{4}\/)(\d{1,2})(\/[a-zA-Z0-9_-]+)\b/gi, (match, prefix, monthStr, rest) => {
-    const monthNum = parseInt(monthStr, 10);
-    if (monthNum >= 1 && monthNum <= 12) {
-      return `${prefix.toUpperCase()}${romanMonths[monthNum - 1]}${rest}`;
-    }
-    return match;
-  });
-};
-
 /**
  * Utility to match search queries against a set of text fields.
  * Performs word-prefix matching so searching "gas" or "ga" matches words starting with "gas" or "ga"
